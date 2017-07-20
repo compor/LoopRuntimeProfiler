@@ -41,6 +41,9 @@
 #include "llvm/Support/Debug.h"
 // using DEBUG macro
 
+#include <cassert>
+// using assert
+
 #define DEBUG_TYPE "loopruntimeprofiler"
 
 #define STRINGIFY_UTIL(x) #x
@@ -79,6 +82,25 @@ static llvm::RegisterStandardPasses RegisterLoopRuntimeProfilerPass(
 
 //
 
+static llvm::cl::opt<unsigned int>
+    LoopDepthLB("lrp-loop-depth-lb",
+                llvm::cl::desc("loop depth lower bound (inclusive)"),
+                llvm::cl::init(1u));
+
+static llvm::cl::opt<unsigned int>
+    LoopDepthUB("lrp-loop-depth-ub",
+                llvm::cl::desc("loop depth upper bound (inclusive)"),
+                llvm::cl::init(std::numeric_limits<unsigned>::max()));
+
+static llvm::cl::list<unsigned int>
+    LoopIDWhiteList("lrp-loop-id",
+                    llvm::cl::desc("Specify loop ids to whitelist"),
+                    llvm::cl::value_desc("loop id"), llvm::cl::ZeroOrMore);
+
+static llvm::cl::opt<std::string>
+    LoopIDWhiteListFilename("lrp-loop-id-whitelist",
+                            llvm::cl::desc("loop id whitelist filename"));
+
 #if LOOPRUNTIMEPROFILERPASS_DEBUG
 bool passDebugFlag = false;
 static llvm::cl::opt<bool, true>
@@ -86,9 +108,24 @@ static llvm::cl::opt<bool, true>
           llvm::cl::location(passDebugFlag));
 #endif // LOOPRUNTIMEPROFILERPASS_DEBUG
 
+namespace {
+
+void checkCmdLineOptions(void) {
+  assert(LoopDepthLB && LoopDepthUB && "Loop depth bounds cannot be zero!");
+
+  assert(LoopDepthLB <= LoopDepthUB &&
+         "Loop depth lower bound cannot be greater that upper!");
+
+  return;
+}
+
+} // namespace anonymous end
+
 //
 
 bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
+  checkCmdLineOptions();
+
   return false;
 }
 
