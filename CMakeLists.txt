@@ -93,14 +93,25 @@ endif()
 
 # dependencies
 
-#find_package(Foo CONFIG)
+find_package(SimplifyLoopExits CONFIG)
 
-#if(Foo_FOUND)
-  #set(${PRJ_NAME_UPPER}_USES_FOO 1)
-#else()
-  #set(${PRJ_NAME_UPPER}_USES_FOO 0)
-  #message(WARNING "package Foo was not found; skipping.")
-#endif()
+if(SimplifyLoopExits_FOUND)
+  set(${PRJ_NAME_UPPER}_USES_SIMPLIFYLOOPEXITS 1)
+else()
+  set(${PRJ_NAME_UPPER}_USES_SIMPLIFYLOOPEXITS 0)
+  message(WARNING "package SimplifyLoopExits was not found")
+endif()
+
+
+find_package(AnnotateLoops CONFIG)
+
+if(AnnotateLoops_FOUND)
+  set(${PRJ_NAME_UPPER}_USES_ANNOTATELOOPS 1)
+else()
+  set(${PRJ_NAME_UPPER}_USES_ANNOTATELOOPS 0)
+  message(WARNING "package AnnotateLoops was not found")
+endif()
+
 
 #
 
@@ -128,8 +139,12 @@ endif()
 #llvm_map_components_to_libnames(llvm_libs core support analysis ipo passes)
 #target_link_libraries(${LIB_NAME} PUBLIC ${llvm_libs})
 
-if(Foo_FOUND)
-  target_link_libraries(${LIB_NAME} PUBLIC Foo)
+if(SimplifyLoopExits_FOUND)
+  target_link_libraries(${LIB_NAME} PUBLIC LLVMSimplifyLoopExitsPass)
+endif()
+
+if(AnnotateLoops_FOUND)
+  target_link_libraries(${LIB_NAME} PUBLIC LLVMAnnotateLoopsPass)
 endif()
 
 target_compile_definitions(${LIB_NAME} PUBLIC ${LLVM_DEFINITIONS})
