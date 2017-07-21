@@ -6,3 +6,6 @@ set(SOURCES ${PRJ_RT_NAME}.c)
 
 add_library(${PRJ_RT_NAME} STATIC ${SOURCES})
 
+install(TARGETS ${PRJ_RT_NAME} EXPORT ${PRJ_NAME} 
+  ARCHIVE DESTINATION "runtime/lib")
+
