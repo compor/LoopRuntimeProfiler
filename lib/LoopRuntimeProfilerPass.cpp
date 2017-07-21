@@ -6,7 +6,13 @@
 
 #include "Utils.hpp"
 
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+#include "AnnotateLoops.hpp"
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+
 #include "LoopRuntimeProfilerPass.hpp"
+
+#include "LoopRuntimeProfiler.hpp"
 
 #include "llvm/Pass.h"
 // using llvm::RegisterPass
@@ -20,8 +26,12 @@
 #include "llvm/IR/Function.h"
 // using llvm::Function
 
-#include "llvm/Support/Casting.h"
-// using llvm::dyn_cast
+#include "llvm/IR/Module.h"
+// using llvm::Module
+
+#include "llvm/Analysis/LoopInfo.h"
+// using llvm::LoopInfoWrapperPass
+// using llvm::LoopInfo
 
 #include "llvm/IR/LegacyPassManager.h"
 // using llvm::PassManagerBase
@@ -30,21 +40,47 @@
 // using llvm::PassManagerBuilder
 // using llvm::RegisterStandardPasses
 
+#include "llvm/Transforms/Scalar.h"
+// using char llvm::LoopInfoSimplifyID
+
+#include "llvm/ADT/SmallVector.h"
+// using llvm::SmallVector
+
 #include "llvm/Support/CommandLine.h"
 // using llvm::cl::opt
+// using llvm::cl::list
 // using llvm::cl::desc
+// using llvm::cl::value_desc
 // using llvm::cl::location
+// using llvm::cl::ZeroOrMore
 
 #include "llvm/Support/raw_ostream.h"
 // using llvm::raw_ostream
 
 #include "llvm/Support/Debug.h"
 // using DEBUG macro
+// using llvm::dbgs
+
+#include "llvm/IR/Verifier.h"
+// using llvm::verifyFunction
+
+#include <string>
+// using std::string
+// using std::stoul
+
+#include <fstream>
+// using std::ifstream
+
+#include <set>
+// using std::set
+
+#include <limits>
+// using std::numeric_limits
 
 #include <cassert>
 // using assert
 
-#define DEBUG_TYPE "loopruntimeprofiler"
+#define DEBUG_TYPE "loop_runtime_profiler"
 
 #define STRINGIFY_UTIL(x) #x
 #define STRINGIFY(x) STRINGIFY_UTIL(x)
@@ -126,7 +162,72 @@ void checkCmdLineOptions(void) {
 bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   checkCmdLineOptions();
 
+  bool hasModuleChanged = false;
+  bool useLoopIDWhitelist = !LoopIDWhiteListFilename.empty();
+  llvm::SmallVector<llvm::Loop *, 16> workList;
+  std::set<unsigned> loopIDs;
+
+  if (useLoopIDWhitelist) {
+    std::ifstream loopIDWhiteListFile{LoopIDWhiteListFilename};
+
+    if (loopIDWhiteListFile.is_open()) {
+      std::string loopID;
+
+      while (loopIDWhiteListFile >> loopID) {
+        if (loopID.size() > 0 && loopID[0] != '#')
+          loopIDs.insert(std::stoul(loopID));
+      }
+
+      loopIDWhiteListFile.close();
+    } else
+      llvm::errs() << "could not open file: \'" << LoopIDWhiteListFilename
+                   << "\'\n";
+  }
+
+  for (const auto &e : LoopIDWhiteList)
+    loopIDs.insert(e);
+
+  for (auto &CurFunc : CurMod) {
+    if (CurFunc.isDeclaration())
+      continue;
+
+    auto &LI = getAnalysis<llvm::LoopInfoWrapperPass>(CurFunc).getLoopInfo();
+
+    workList.clear();
+
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+    AnnotateLoops al;
+
+    for (auto *e : LI)
+      if (al.hasAnnotatedId(*e)) {
+        auto id = al.getAnnotatedId(*e);
+        if (loopIDs.count(id))
+          workList.push_back(e);
+      }
+#endif // SIMPLIFYLOOPEXITSFRONT_USES_ANNOTATELOOPS
+
+    for (auto i = 0; i < workList.size(); ++i)
+      for (auto &e : workList[i]->getSubLoops())
+        workList.push_back(e);
+
+    workList.erase(
+        std::remove_if(workList.begin(), workList.end(), [](const auto *e) {
+          auto d = e->getLoopDepth();
+          return d < LoopDepthLB || d > LoopDepthUB;
+        }), workList.end());
+
+    std::reverse(workList.begin(), workList.end());
+  }
+
   return false;
 }
 
+void LoopRuntimeProfilerPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
+  AU.addPreservedID(llvm::LoopSimplifyID);
+  AU.addRequiredTransitiveID(llvm::LoopSimplifyID);
+  AU.addRequiredTransitive<llvm::LoopInfoWrapperPass>();
+  AU.addPreserved<llvm::LoopInfoWrapperPass>();
+
+  return;
+}
 } // namespace icsa end

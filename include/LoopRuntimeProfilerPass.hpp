@@ -21,6 +21,8 @@ public:
   LoopRuntimeProfilerPass() : llvm::ModulePass(ID) {}
 
   bool runOnModule(llvm::Module &CurMod) override;
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
 };
 
 } // namespace icsa end
