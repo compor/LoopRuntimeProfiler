@@ -13,6 +13,8 @@
 #include <stdio.h>
 // using fprintf
 
+extern "C" {
+
 clock_t lrp_program_start_timestamp;
 clock_t lrp_program_stop_timestamp;
 
@@ -53,3 +55,5 @@ void lrp_program_start(void) {
 void lrp_loop_start(void) { return; }
 
 void lrp_loop_stop(void) { return; }
+
+} // extern "C"

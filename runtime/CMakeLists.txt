@@ -2,7 +2,7 @@
 
 set(PRJ_RT_NAME lrp_rt)
 
-set(SOURCES ${PRJ_RT_NAME}.c)
+set(SOURCES ${PRJ_RT_NAME}.cpp)
 
 add_library(${PRJ_RT_NAME} STATIC ${SOURCES})
 
