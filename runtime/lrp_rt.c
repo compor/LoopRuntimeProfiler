@@ -38,7 +38,7 @@ void lrp_program_stop(void) {
 void lrp_program_start(void) {
   int rc = atexit(lrp_program_stop);
 
-  if (!rc) {
+  if (rc) {
     fprintf(stderr, "could not set program exit handler!\n");
 
     abort();
