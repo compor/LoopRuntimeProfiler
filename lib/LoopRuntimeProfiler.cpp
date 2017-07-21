@@ -42,14 +42,10 @@ void instrumentProgramStart(const std::string &FuncName, llvm::BasicBlock *BB) {
   auto *curModule = BB->getParent()->getParent();
   auto *insertionPoint = BB->getFirstNonPHIOrDbg();
 
-  auto *func =
-      curModule->getOrInsertFunction(FuncName, llvm::Type::getVoidTy(curCtx),
-                                     llvm::Type::getVoidTy(curCtx), nullptr);
+  auto *func = curModule->getOrInsertFunction(
+      FuncName, llvm::Type::getVoidTy(curCtx), nullptr);
 
-  llvm::SmallVector<llvm::Value *, 1> funcArgs;
-
-  llvm::CallInst::Create(llvm::cast<llvm::Function>(func), funcArgs,
-                         FuncName + "call", insertionPoint);
+  llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "", insertionPoint);
 
   return;
 }
