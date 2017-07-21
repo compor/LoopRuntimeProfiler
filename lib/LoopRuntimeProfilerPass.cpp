@@ -191,6 +191,11 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     if (CurFunc.isDeclaration())
       continue;
 
+    if (CurFunc.hasName() && CurFunc.getName().equals("main"))
+      LoopRuntimeProfiler::instrumentProgramStart(
+          LoopRuntimeProfiler::ProfilerProgramStartFuncName,
+          &(CurFunc.getEntryBlock()));
+
     auto &LI = getAnalysis<llvm::LoopInfoWrapperPass>(CurFunc).getLoopInfo();
 
     workList.clear();
@@ -219,7 +224,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     std::reverse(workList.begin(), workList.end());
   }
 
-  return false;
+  return hasModuleChanged;
 }
 
 void LoopRuntimeProfilerPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {

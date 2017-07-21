@@ -33,8 +33,9 @@
 namespace icsa {
 namespace LoopRuntimeProfiler {
 
-std::string ProfileProgramStartFuncName = "lrp_program_start";
-std::string ProfileProgramStopFuncName = "lrp_program_stop";
+std::string ProfilerProgramEntryFuncName = "main";
+std::string ProfilerProgramStartFuncName = "lrp_program_start";
+std::string ProfilerProgramStopFuncName = "lrp_program_stop";
 
 void instrumentProgramStart(const std::string &FuncName, llvm::BasicBlock *BB) {
   auto &curCtx = BB->getContext();

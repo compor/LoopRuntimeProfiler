@@ -15,8 +15,9 @@ class BasicBlock;
 namespace icsa {
 namespace LoopRuntimeProfiler {
 
-extern std::string ProfileProgramStartFuncName;
-extern std::string ProfileProgramStopFuncName;
+extern std::string ProfilerProgramEntryFuncName;
+extern std::string ProfilerProgramStartFuncName;
+extern std::string ProfilerProgramStopFuncName;
 
 void instrumentProgramStart(const std::string &FuncName, llvm::BasicBlock *BB);
 
