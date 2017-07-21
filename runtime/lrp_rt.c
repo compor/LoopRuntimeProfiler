@@ -13,10 +13,10 @@
 #include <stdio.h>
 // using fprintf
 
-static clock_t lrp_program_start_timestamp;
-static clock_t lrp_program_stop_timestamp;
+clock_t lrp_program_start_timestamp;
+clock_t lrp_program_stop_timestamp;
 
-static void lrp_report(void) {
+void lrp_report(void) {
   double duration = 1000.0 *
                     (lrp_program_stop_timestamp - lrp_program_start_timestamp) /
                     CLOCKS_PER_SEC;
@@ -26,7 +26,7 @@ static void lrp_report(void) {
   return;
 }
 
-static void lrp_program_stop(void) {
+void lrp_program_stop(void) {
   fprintf(stderr, "lrp runtime stop!\n");
   lrp_program_stop_timestamp = clock();
 
@@ -35,7 +35,7 @@ static void lrp_program_stop(void) {
   return;
 }
 
-static void lrp_program_start(void) {
+void lrp_program_start(void) {
   int rc = atexit(lrp_program_stop);
 
   if (!rc) {
@@ -50,6 +50,6 @@ static void lrp_program_start(void) {
   return;
 }
 
-static void lrp_loop_start(void) { return; }
+void lrp_loop_start(void) { return; }
 
-static void lrp_loop_stop(void) { return; }
+void lrp_loop_stop(void) { return; }
