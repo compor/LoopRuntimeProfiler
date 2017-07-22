@@ -194,7 +194,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     if (CurFunc.hasName() && CurFunc.getName().equals("main"))
       LoopRuntimeProfiler::instrumentProgramStart(
           LoopRuntimeProfiler::ProfilerProgramStartFuncName,
-          &(CurFunc.getEntryBlock()));
+          CurFunc.getEntryBlock());
 
     auto &LI = getAnalysis<llvm::LoopInfoWrapperPass>(CurFunc).getLoopInfo();
 
