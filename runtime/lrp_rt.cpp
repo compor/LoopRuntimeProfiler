@@ -13,6 +13,19 @@
 #include <stdio.h>
 // using fprintf
 
+#include <map>
+// using std::map
+
+#include <stdint.h>
+// using uint32_t
+
+struct loop_time_entry_t {
+  bool isStart;
+  clock_t timestamp;
+};
+
+std::map<uint32_t, loop_time_entry_t> loop_timestamps;
+
 extern "C" {
 
 clock_t lrp_program_start_timestamp;
