@@ -19,7 +19,9 @@ extern std::string ProfilerProgramEntryFuncName;
 extern std::string ProfilerProgramStartFuncName;
 extern std::string ProfilerProgramStopFuncName;
 
-void instrumentProgramStart(const std::string &FuncName, llvm::BasicBlock *BB);
+extern int IdBits;
+
+void instrumentProgramStart(const std::string &FuncName, llvm::BasicBlock &BB);
 
 } // namespace LoopRuntimeProfiler
 } // namespace icsa end
