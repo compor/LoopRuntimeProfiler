@@ -94,6 +94,15 @@ template <typename LoopInstrumentationPolicy =
               IncrementLoopInstrumentationPolicy>
 class Instrumenter : private LoopInstrumentationPolicy {
 public:
+  void instrumentProgram(const std::string &FuncName, llvm::Module &CurMod) {
+    auto *func = CurMod.getFunction(ProfilerProgramEntryFuncName);
+
+    if (!func->isDeclaration())
+      instrumentProgram(FuncName, *func);
+
+    return;
+  }
+
   void instrumentProgram(const std::string &FuncName, llvm::Function &CurFunc) {
     auto &curCtx = CurFunc.getContext();
     auto *curModule = CurFunc.getParent();

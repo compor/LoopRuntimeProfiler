@@ -192,13 +192,12 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
       LoopRuntimeProfiler::AnnotatatedLoopInstrumentationPolicy> instrumenter;
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
+  instrumenter.instrumentProgram(
+      LoopRuntimeProfiler::ProfilerProgramStartFuncName, CurMod);
+
   for (auto &CurFunc : CurMod) {
     if (CurFunc.isDeclaration())
       continue;
-
-    if (CurFunc.hasName() && CurFunc.getName().equals("main"))
-      instrumenter.instrumentProgram(
-          LoopRuntimeProfiler::ProfilerProgramStartFuncName, CurFunc);
 
     auto &LI = getAnalysis<llvm::LoopInfoWrapperPass>(CurFunc).getLoopInfo();
 
