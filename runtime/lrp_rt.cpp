@@ -2,6 +2,9 @@
 //
 //
 
+#include <map>
+// using std::map
+
 #include <time.h>
 // using clock
 // using CLOCKS_PER_SEC
@@ -9,12 +12,11 @@
 #include <stdlib.h>
 // using atexit
 // using abort
+// using getenv
+// using atol
 
 #include <stdio.h>
 // using fprintf
-
-#include <map>
-// using std::map
 
 #include <stdint.h>
 // using uint32_t
@@ -35,6 +37,7 @@ struct TimingEntry {
 std::map<uint32_t, TimingEntry> LoopTimingEntries;
 
 extern "C" {
+void lrp_init(void);
 void lrp_report(void);
 void lrp_program_start(void);
 void lrp_program_stop(void);
@@ -47,6 +50,15 @@ clock_t lrp_ProgramStop;
 
 long int lrp_TestDepth = -1;
 long int lrp_CurrentDepth = -1;
+
+void lrp_init(void) {
+  const char *d = getenv("LRP_TEST_DEPTH");
+
+  if (!d)
+    lrp_TestDepth = atol(d);
+
+  return;
+}
 
 void lrp_report(void) {
   if (!lrp_ProfilingEnabled)
