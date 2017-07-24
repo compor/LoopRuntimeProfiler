@@ -41,6 +41,10 @@
 #include "llvm/Support/Casting.h"
 // using llvm::cast
 
+#include <utility>
+// using std::pair
+// using std::make_pair
+
 #include <cstdint>
 // using std::uint32_t
 
@@ -117,20 +121,17 @@ class Instrumenter : private LoopInstrumentationPolicy,
 public:
   Instrumenter() : m_InitFnName("lrp_init") {}
 
-  void instrumentProgram(llvm::Module &CurMod) {
+  llvm::CallInst *instrumentProgram(llvm::Module &CurMod) {
     auto *func = CurMod.getFunction(RuntimeCallbacksPolicy::programEntry());
 
-    if (!func->isDeclaration())
-      instrumentProgram(*func);
-
-    return;
+    return !func->isDeclaration() ? instrumentProgram(*func) : nullptr;
   }
 
-  void instrumentProgram(llvm::Function &CurFunc) {
+  llvm::CallInst *instrumentProgram(llvm::Function &CurFunc) {
     static bool hasBeenCalled = false;
 
     if (hasBeenCalled)
-      return;
+      return nullptr;
 
     hasBeenCalled = true;
 
@@ -142,15 +143,17 @@ public:
         curModule->getOrInsertFunction(RuntimeCallbacksPolicy::programStart(),
                                        llvm::Type::getVoidTy(curCtx), nullptr);
 
-    llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "", insertBefore);
+    auto *call = llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "",
+                                        insertBefore);
 
     auto *insertPoint = instrumentInit(CurFunc.getEntryBlock());
     assert(insertPoint && "Call to runtime init has already been added!");
 
-    return;
+    return call;
   }
 
-  void instrumentLoop(llvm::Loop &CurLoop) {
+  std::pair<llvm::CallInst *, llvm::CallInst *>
+  instrumentLoop(llvm::Loop &CurLoop) {
     assert(CurLoop.getLoopPreheader() && "Loop does not have a preheader!");
     assert(CurLoop.getExitingBlock() &&
            "Loop does not have a single exiting block!");
@@ -178,18 +181,19 @@ public:
             curCtx, std::numeric_limits<LoopInstrumentationID_t>::digits),
         id));
 
-    llvm::CallInst::Create(llvm::cast<llvm::Function>(startFunc), "",
-                           startInsertionPoint);
+    auto *call1 = llvm::CallInst::Create(llvm::cast<llvm::Function>(startFunc),
+                                         "", startInsertionPoint);
 
-    llvm::CallInst::Create(llvm::cast<llvm::Function>(endFunc), "",
-                           endInsertionPoint);
-    return;
+    auto *call2 = llvm::CallInst::Create(llvm::cast<llvm::Function>(endFunc),
+                                         "", endInsertionPoint);
+
+    return std::make_pair(call1, call2);
   }
 
 private:
   const std::string m_InitFnName;
 
-  llvm::Instruction *instrumentInit(llvm::BasicBlock &BB) {
+  llvm::CallInst *instrumentInit(llvm::BasicBlock &BB) {
     static bool hasBeenCalled = false;
 
     if (hasBeenCalled)
