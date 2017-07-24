@@ -37,6 +37,9 @@ extern "C" {
 clock_t lrp_program_start_timestamp;
 clock_t lrp_program_stop_timestamp;
 
+long int lrp_test_depth = -1;
+long int lrp_current_depth = -1;
+
 void lrp_report(void) {
   double duration = 1000.0 *
                     (lrp_program_stop_timestamp - lrp_program_start_timestamp) /
@@ -72,6 +75,10 @@ void lrp_program_start(void) {
 }
 
 void lrp_loop_start(uint32_t id) {
+  ++lrp_current_depth;
+  if (lrp_current_depth != lrp_test_depth)
+    return;
+
   auto found = LoopTimingEntries.find(id);
 
   if (found == LoopTimingEntries.end())
@@ -87,15 +94,19 @@ void lrp_loop_start(uint32_t id) {
 }
 
 void lrp_loop_stop(uint32_t id) {
-  auto found = LoopTimingEntries.find(id);
+  if (lrp_current_depth == lrp_test_depth) {
+    auto found = LoopTimingEntries.find(id);
 
-  assert(found != LoopTimingEntries.end() &&
-         "Timing of section has not been started!");
+    assert(found != LoopTimingEntries.end() &&
+           "Timing of section has not been started!");
 
-  found->second.m_NumSections++;
-  found->second.m_TotalDuration +=
-      1000.0 * (clock() - found->second.m_LastEntered) / CLOCKS_PER_SEC;
-  found->second.m_LastEntered = 0;
+    found->second.m_NumSections++;
+    found->second.m_TotalDuration +=
+        1000.0 * (clock() - found->second.m_LastEntered) / CLOCKS_PER_SEC;
+    found->second.m_LastEntered = 0;
+  }
+
+  --lrp_current_depth;
 
   return;
 }
