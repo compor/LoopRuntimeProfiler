@@ -61,10 +61,12 @@ using LoopInstrumentationID_t = std::uint32_t;
 extern std::string ProfilerProgramEntryFuncName;
 extern std::string ProfilerProgramStartFuncName;
 extern std::string ProfilerProgramStopFuncName;
+extern std::string ProfilerLoopStartFuncName;
+extern std::string ProfilerLoopStopFuncName;
 
 void instrumentProgramStart(const std::string &FuncName, llvm::BasicBlock &BB);
 
-struct IncrementLoopInstrumentationPolicy final {
+struct IncrementLoopInstrumentationPolicy {
   IncrementLoopInstrumentationPolicy() : id(0) {}
 
   LoopInstrumentationID_t getInstrumentationID(const llvm::Loop &CurLoop) {
@@ -76,7 +78,7 @@ private:
 };
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-struct AnnotatatedLoopInstrumentationPolicy final {
+struct AnnotatatedLoopInstrumentationPolicy {
   AnnotatatedLoopInstrumentationPolicy() {}
 
   LoopInstrumentationID_t getInstrumentationID(const llvm::Loop &CurLoop) {

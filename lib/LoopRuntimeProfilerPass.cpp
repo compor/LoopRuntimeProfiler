@@ -224,6 +224,17 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     std::reverse(workList.begin(), workList.end());
   }
 
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+  LoopRuntimeProfiler::Instrumenter<
+      LoopRuntimeProfiler::AnnotatatedLoopInstrumentationPolicy>
+      loopInstrumenter;
+
+  for (auto *e : workList)
+    loopInstrumenter.instrumentLoop(
+        LoopRuntimeProfiler::ProfilerLoopStartFuncName,
+        LoopRuntimeProfiler::ProfilerLoopStopFuncName, *e);
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+
   return hasModuleChanged;
 }
 
