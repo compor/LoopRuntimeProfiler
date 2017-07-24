@@ -33,6 +33,12 @@ struct TimingEntry {
 std::map<uint32_t, TimingEntry> LoopTimingEntries;
 
 extern "C" {
+void lrp_report(void);
+void lrp_program_start(void);
+void lrp_program_stop(void);
+void lrp_loop_start(uint32_t id);
+void lrp_loop_stop(uint32_t id);
+} // extern "C"
 
 clock_t lrp_ProgramStart;
 clock_t lrp_ProgramStop;
@@ -109,5 +115,3 @@ void lrp_loop_stop(uint32_t id) {
 
   return;
 }
-
-} // extern "C"
