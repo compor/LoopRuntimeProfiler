@@ -189,7 +189,7 @@ add_subdirectory(unittests)
 add_subdirectory(tests)
 add_subdirectory(doc)
 
-add_subdirectory(runtime)
+add_subdirectory(runtimes)
 
 attach_compilation_db_command(${LIB_NAME})
 
