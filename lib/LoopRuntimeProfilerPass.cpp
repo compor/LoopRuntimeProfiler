@@ -189,11 +189,11 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
   LoopRuntimeProfiler::Instrumenter<
+      LoopRuntimeProfiler::DefaultRuntimeCallbacksPolicy,
       LoopRuntimeProfiler::AnnotatatedLoopInstrumentationPolicy> instrumenter;
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
-  instrumenter.instrumentProgram(
-      LoopRuntimeProfiler::ProfilerProgramStartFuncName, CurMod);
+  instrumenter.instrumentProgram(CurMod);
 
   for (auto &CurFunc : CurMod) {
     if (CurFunc.isDeclaration())
@@ -229,9 +229,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
   for (auto *e : workList)
-    instrumenter.instrumentLoop(LoopRuntimeProfiler::ProfilerLoopStartFuncName,
-                                LoopRuntimeProfiler::ProfilerLoopStopFuncName,
-                                *e);
+    instrumenter.instrumentLoop(*e);
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
   return hasModuleChanged;

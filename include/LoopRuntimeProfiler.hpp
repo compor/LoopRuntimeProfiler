@@ -77,6 +77,27 @@ private:
   LoopInstrumentationID_t m_ID;
 };
 
+struct DefaultRuntimeCallbacksPolicy {
+  DefaultRuntimeCallbacksPolicy()
+      : m_PrgStartFnName("lrp_program_start"),
+        m_PrgStopFnName("lrp_program_stop"),
+        m_LoopStartFnName("lrp_loop_start"), m_LoopStopFnName("lrp_loop_stop"),
+        m_PrgEntryFnName("main") {}
+
+  constexpr const std::string &programStart() const { return m_PrgStartFnName; }
+  constexpr const std::string &programStop() const { return m_PrgStopFnName; }
+  constexpr const std::string &loopStart() const { return m_LoopStartFnName; }
+  constexpr const std::string &loopStop() const { return m_LoopStopFnName; }
+  constexpr const std::string &programEntry() const { return m_PrgEntryFnName; }
+
+private:
+  const std::string m_PrgStartFnName;
+  const std::string m_PrgStopFnName;
+  const std::string m_LoopStartFnName;
+  const std::string m_LoopStopFnName;
+  const std::string m_PrgEntryFnName;
+};
+
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 struct AnnotatatedLoopInstrumentationPolicy {
   AnnotatatedLoopInstrumentationPolicy() {}
@@ -90,26 +111,29 @@ private:
 };
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
-template <typename LoopInstrumentationPolicy =
+template <typename RuntimeCallbacksPolicy = DefaultRuntimeCallbacksPolicy,
+          typename LoopInstrumentationPolicy =
               IncrementLoopInstrumentationPolicy>
-class Instrumenter : private LoopInstrumentationPolicy {
+class Instrumenter : private LoopInstrumentationPolicy,
+                     private RuntimeCallbacksPolicy {
 public:
-  void instrumentProgram(const std::string &FuncName, llvm::Module &CurMod) {
-    auto *func = CurMod.getFunction(ProfilerProgramEntryFuncName);
+  void instrumentProgram(llvm::Module &CurMod) {
+    auto *func = CurMod.getFunction(RuntimeCallbacksPolicy::programEntry());
 
     if (!func->isDeclaration())
-      instrumentProgram(FuncName, *func);
+      instrumentProgram(*func);
 
     return;
   }
 
-  void instrumentProgram(const std::string &FuncName, llvm::Function &CurFunc) {
+  void instrumentProgram(llvm::Function &CurFunc) {
     auto &curCtx = CurFunc.getContext();
     auto *curModule = CurFunc.getParent();
     auto *insertionPoint = CurFunc.getEntryBlock().getFirstNonPHIOrDbg();
 
-    auto *func = curModule->getOrInsertFunction(
-        FuncName, llvm::Type::getVoidTy(curCtx), nullptr);
+    auto *func =
+        curModule->getOrInsertFunction(RuntimeCallbacksPolicy::programStart(),
+                                       llvm::Type::getVoidTy(curCtx), nullptr);
 
     llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "",
                            insertionPoint);
@@ -117,8 +141,7 @@ public:
     return;
   }
 
-  void instrumentLoop(const std::string &StartFuncName,
-                      const std::string &EndFuncName, llvm::Loop &CurLoop) {
+  void instrumentLoop(llvm::Loop &CurLoop) {
     assert(CurLoop.getLoopPreheader() && "Loop does not have a preheader!");
     assert(CurLoop.getExitingBlock() &&
            "Loop does not have a single exiting block!");
@@ -130,11 +153,11 @@ public:
     auto *endInsertionPoint = CurLoop.getExitBlock()->getFirstNonPHIOrDbg();
 
     auto *startFunc = curModule->getOrInsertFunction(
-        StartFuncName, llvm::Type::getVoidTy(curCtx),
+        RuntimeCallbacksPolicy::loopStart(), llvm::Type::getVoidTy(curCtx),
         llvm::Type::getInt32Ty(curCtx), nullptr);
 
     auto *endFunc = curModule->getOrInsertFunction(
-        EndFuncName, llvm::Type::getVoidTy(curCtx),
+        RuntimeCallbacksPolicy::loopStop(), llvm::Type::getVoidTy(curCtx),
         llvm::Type::getInt32Ty(curCtx), nullptr);
 
     auto id = LoopInstrumentationPolicy::getInstrumentationID(CurLoop);
