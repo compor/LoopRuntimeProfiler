@@ -64,15 +64,18 @@
 #include "llvm/IR/Verifier.h"
 // using llvm::verifyFunction
 
+#include <set>
+// using std::set
+
+#include <algorithm>
+// using std::for_each
+
 #include <string>
 // using std::string
 // using std::stoul
 
 #include <fstream>
 // using std::ifstream
-
-#include <set>
-// using std::set
 
 #include <limits>
 // using std::numeric_limits
@@ -187,11 +190,14 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   for (const auto &e : LoopIDWhiteList)
     loopIDs.insert(e);
 
-#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
   LoopRuntimeProfiler::Instrumenter<
       LoopRuntimeProfiler::DefaultRuntimeCallbacksPolicy,
-      LoopRuntimeProfiler::AnnotatatedLoopInstrumentationPolicy> instrumenter;
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+      LoopRuntimeProfiler::AnnotatatedLoopInstrumentationPolicy
+#else
+      LoopRuntimeProfiler::IncrementLoopInstrumentationPolicy
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+      > instrumenter;
 
   instrumenter.instrumentProgram(CurMod);
 
@@ -206,13 +212,18 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
     AnnotateLoops al;
 
-    for (auto *e : LI)
+    auto loopsFilter = [&](llvm::Loop *e) {
       if (al.hasAnnotatedId(*e)) {
         auto id = al.getAnnotatedId(*e);
         if (loopIDs.count(id))
           workList.push_back(e);
       }
+    };
+#else
+    auto loopsFilter = [&](llvm::Loop *e) { workList.push_back(e); };
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+
+    std::for_each(LI.begin(), LI.end(), loopsFilter);
 
     for (auto i = 0; i < workList.size(); ++i)
       for (auto &e : workList[i]->getSubLoops())
@@ -227,10 +238,8 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     std::reverse(workList.begin(), workList.end());
   }
 
-#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
   for (auto *e : workList)
     instrumenter.instrumentLoop(*e);
-#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
   return hasModuleChanged;
 }
