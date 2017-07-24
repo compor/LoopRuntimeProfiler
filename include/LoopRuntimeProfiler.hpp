@@ -67,14 +67,14 @@ extern std::string ProfilerLoopStopFuncName;
 void instrumentProgramStart(const std::string &FuncName, llvm::BasicBlock &BB);
 
 struct IncrementLoopInstrumentationPolicy {
-  IncrementLoopInstrumentationPolicy() : id(0) {}
+  IncrementLoopInstrumentationPolicy() : m_ID(0) {}
 
   LoopInstrumentationID_t getInstrumentationID(const llvm::Loop &CurLoop) {
-    return ++id;
+    return ++m_ID;
   }
 
 private:
-  LoopInstrumentationID_t id;
+  LoopInstrumentationID_t m_ID;
 };
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
@@ -94,6 +94,20 @@ template <typename LoopInstrumentationPolicy =
               IncrementLoopInstrumentationPolicy>
 class Instrumenter : private LoopInstrumentationPolicy {
 public:
+  void instrumentProgram(const std::string &FuncName, llvm::Function &CurFunc) {
+    auto &curCtx = CurFunc.getContext();
+    auto *curModule = CurFunc.getParent();
+    auto *insertionPoint = CurFunc.getEntryBlock().getFirstNonPHIOrDbg();
+
+    auto *func = curModule->getOrInsertFunction(
+        FuncName, llvm::Type::getVoidTy(curCtx), nullptr);
+
+    llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "",
+                           insertionPoint);
+
+    return;
+  }
+
   void instrumentLoop(const std::string &StartFuncName,
                       const std::string &EndFuncName, llvm::Loop &CurLoop) {
     assert(CurLoop.getLoopPreheader() && "Loop does not have a preheader!");

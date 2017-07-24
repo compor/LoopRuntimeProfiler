@@ -187,14 +187,18 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   for (const auto &e : LoopIDWhiteList)
     loopIDs.insert(e);
 
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+  LoopRuntimeProfiler::Instrumenter<
+      LoopRuntimeProfiler::AnnotatatedLoopInstrumentationPolicy> instrumenter;
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+
   for (auto &CurFunc : CurMod) {
     if (CurFunc.isDeclaration())
       continue;
 
     if (CurFunc.hasName() && CurFunc.getName().equals("main"))
-      LoopRuntimeProfiler::instrumentProgramStart(
-          LoopRuntimeProfiler::ProfilerProgramStartFuncName,
-          CurFunc.getEntryBlock());
+      instrumenter.instrumentProgram(
+          LoopRuntimeProfiler::ProfilerProgramStartFuncName, CurFunc);
 
     auto &LI = getAnalysis<llvm::LoopInfoWrapperPass>(CurFunc).getLoopInfo();
 
@@ -225,14 +229,10 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   }
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-  LoopRuntimeProfiler::Instrumenter<
-      LoopRuntimeProfiler::AnnotatatedLoopInstrumentationPolicy>
-      loopInstrumenter;
-
   for (auto *e : workList)
-    loopInstrumenter.instrumentLoop(
-        LoopRuntimeProfiler::ProfilerLoopStartFuncName,
-        LoopRuntimeProfiler::ProfilerLoopStopFuncName, *e);
+    instrumenter.instrumentLoop(LoopRuntimeProfiler::ProfilerLoopStartFuncName,
+                                LoopRuntimeProfiler::ProfilerLoopStopFuncName,
+                                *e);
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
   return hasModuleChanged;
