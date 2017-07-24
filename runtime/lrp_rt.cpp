@@ -136,7 +136,7 @@ void lrp_loop_start(uint32_t id) {
     found = LoopTimingEntries.emplace(id, TimingEntry{}).first;
 
   // this assertion disallows nesting
-  assert(found->second.m_LastEntered &&
+  assert(!found->second.m_LastEntered &&
          "Timing for section has already been started!");
 
   found->second.m_LastEntered = clock();
