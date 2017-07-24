@@ -26,6 +26,14 @@
 
 bool lrp_ProfilingEnabled = true;
 
+const char *lrp_ReportFilename = nullptr;
+
+clock_t lrp_ProgramStart;
+clock_t lrp_ProgramStop;
+
+long int lrp_TestDepth = -1;
+long int lrp_CurrentDepth = -1;
+
 struct TimingEntry {
   TimingEntry() : m_NumSections(0), m_TotalDuration(0), m_LastEntered(0) {}
 
@@ -45,16 +53,15 @@ void lrp_loop_start(uint32_t id);
 void lrp_loop_stop(uint32_t id);
 } // extern "C"
 
-clock_t lrp_ProgramStart;
-clock_t lrp_ProgramStop;
-
-long int lrp_TestDepth = -1;
-long int lrp_CurrentDepth = -1;
-
 void lrp_init(void) {
-  const char *d = getenv("LRP_TEST_DEPTH");
+  const char *report = getenv("LRP_REPORT_FILE");
+  if (report)
+    lrp_ReportFilename = report;
+  else
+    lrp_ProfilingEnabled = false;
 
-  if (!d)
+  const char *d = getenv("LRP_TEST_DEPTH");
+  if (d)
     lrp_TestDepth = atol(d);
 
   return;
