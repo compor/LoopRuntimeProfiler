@@ -7,6 +7,10 @@
 
 #include "Config.hpp"
 
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+#include "AnnotateLoops.hpp"
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+
 #include "llvm/IR/Type.h"
 // using llvm::Type
 
@@ -70,6 +74,19 @@ struct IncrementLoopInstrumentationPolicy final {
 private:
   LoopInstrumentationID_t id;
 };
+
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+struct AnnotatatedLoopInstrumentationPolicy final {
+  AnnotatatedLoopInstrumentationPolicy() {}
+
+  LoopInstrumentationID_t getInstrumentationID(const llvm::Loop &CurLoop) {
+    return m_AL.hasAnnotatedId(CurLoop) ? m_AL.getAnnotatedId(CurLoop) : 0;
+  }
+
+private:
+  icsa::AnnotateLoops m_AL;
+};
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
 template <typename LoopInstrumentationPolicy =
               IncrementLoopInstrumentationPolicy>

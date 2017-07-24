@@ -209,7 +209,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
         if (loopIDs.count(id))
           workList.push_back(e);
       }
-#endif // SIMPLIFYLOOPEXITSFRONT_USES_ANNOTATELOOPS
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
     for (auto i = 0; i < workList.size(); ++i)
       for (auto &e : workList[i]->getSubLoops())
