@@ -17,6 +17,8 @@
 
 #include <stdio.h>
 // using fprintf
+// using fopen
+// using fclose
 
 #include <stdint.h>
 // using uint32_t
@@ -27,6 +29,7 @@
 bool lrp_ProfilingEnabled = true;
 
 const char *lrp_ReportFilename = nullptr;
+FILE *lrp_ReportFile = nullptr;
 
 clock_t lrp_ProgramStart;
 clock_t lrp_ProgramStop;
@@ -60,9 +63,14 @@ void lrp_init(void) {
   else
     lrp_ProfilingEnabled = false;
 
+  if (!lrp_ProfilingEnabled)
+    return;
+
   const char *d = getenv("LRP_TEST_DEPTH");
   if (d)
     lrp_TestDepth = atol(d);
+
+  lrp_ReportFile = fopen(lrp_ReportFilename, "w");
 
   return;
 }
@@ -74,7 +82,10 @@ void lrp_report(void) {
   double duration =
       1000.0 * (lrp_ProgramStop - lrp_ProgramStart) / CLOCKS_PER_SEC;
 
-  fprintf(stderr, "lrp runtime (ms): %f\n", duration);
+  fprintf(lrp_ReportFile, "lrp runtime (ms): %f\n", duration);
+
+  if (lrp_ReportFile)
+    fclose(lrp_ReportFile);
 
   return;
 }
@@ -83,7 +94,7 @@ void lrp_program_stop(void) {
   if (!lrp_ProfilingEnabled)
     return;
 
-  fprintf(stderr, "lrp runtime stop!\n");
+  fprintf(lrp_ReportFile, "lrp runtime stop!\n");
   lrp_ProgramStop = clock();
 
   lrp_report();
@@ -98,12 +109,12 @@ void lrp_program_start(void) {
   int rc = atexit(lrp_program_stop);
 
   if (rc) {
-    fprintf(stderr, "could not set program exit handler!\n");
+    fprintf(lrp_ReportFile, "could not set program exit handler!\n");
 
     abort();
   }
 
-  fprintf(stderr, "lrp runtime start!\n");
+  fprintf(lrp_ReportFile, "lrp runtime start!\n");
   lrp_ProgramStart = clock();
 
   return;
