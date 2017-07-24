@@ -19,12 +19,15 @@
 #include <stdint.h>
 // using uint32_t
 
-struct loop_time_entry_t {
-  bool isStart;
-  clock_t timestamp;
+struct TimingEntry {
+  TimingEntry() : m_NumSections(0), m_TotalDuration(0), m_LastEntered(0) {}
+
+  uint32_t m_NumSections;
+  clock_t m_TotalDuration;
+  clock_t m_LastEntered;
 };
 
-std::map<uint32_t, loop_time_entry_t> loop_timestamps;
+std::map<uint32_t, TimingEntry> LoopTimingEntries;
 
 extern "C" {
 
@@ -65,8 +68,8 @@ void lrp_program_start(void) {
   return;
 }
 
-void lrp_loop_start(void) { return; }
+void lrp_loop_start(uint32_t id) { return; }
 
-void lrp_loop_stop(void) { return; }
+void lrp_loop_stop(uint32_t id) { return; }
 
 } // extern "C"
