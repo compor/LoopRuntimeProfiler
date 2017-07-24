@@ -86,6 +86,12 @@ void lrp_report(void) {
   fprintf(lrp_ReportFile, "loops seen at depth %ld : %lu\n", lrp_TestDepth,
           LoopTimingEntries.size());
 
+  for (const auto &e : LoopTimingEntries) {
+    double d = 1000.0 * e.second.m_TotalDuration / CLOCKS_PER_SEC;
+    double p = d / duration * 100.0;
+    fprintf(lrp_ReportFile, "%u %lf %lf\n", e.first, d, p);
+  }
+
   if (lrp_ReportFile)
     fclose(lrp_ReportFile);
 
