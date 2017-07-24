@@ -19,6 +19,9 @@
 #include <stdint.h>
 // using uint32_t
 
+#include <assert.h>
+// using assert
+
 struct TimingEntry {
   TimingEntry() : m_NumSections(0), m_TotalDuration(0), m_LastEntered(0) {}
 
@@ -68,8 +71,33 @@ void lrp_program_start(void) {
   return;
 }
 
-void lrp_loop_start(uint32_t id) { return; }
+void lrp_loop_start(uint32_t id) {
+  auto found = LoopTimingEntries.find(id);
 
-void lrp_loop_stop(uint32_t id) { return; }
+  if (found == LoopTimingEntries.end())
+    found = LoopTimingEntries.emplace(id, TimingEntry{}).first;
+
+  // this assertion disallows nesting
+  assert(found->second.m_LastEntered &&
+         "Timing for section has already been started!");
+
+  found->second.m_LastEntered = clock();
+
+  return;
+}
+
+void lrp_loop_stop(uint32_t id) {
+  auto found = LoopTimingEntries.find(id);
+
+  assert(found != LoopTimingEntries.end() &&
+         "Timing of section has not been started!");
+
+  found->second.m_NumSections++;
+  found->second.m_TotalDuration +=
+      1000.0 * (clock() - found->second.m_LastEntered) / CLOCKS_PER_SEC;
+  found->second.m_LastEntered = 0;
+
+  return;
+}
 
 } // extern "C"
