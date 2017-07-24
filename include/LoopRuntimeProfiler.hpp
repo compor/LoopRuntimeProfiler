@@ -64,8 +64,6 @@ extern std::string ProfilerProgramStopFuncName;
 extern std::string ProfilerLoopStartFuncName;
 extern std::string ProfilerLoopStopFuncName;
 
-void instrumentProgramStart(const std::string &FuncName, llvm::BasicBlock &BB);
-
 struct IncrementLoopInstrumentationPolicy {
   IncrementLoopInstrumentationPolicy() : m_ID(0) {}
 
