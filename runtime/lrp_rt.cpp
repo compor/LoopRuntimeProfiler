@@ -83,6 +83,8 @@ void lrp_report(void) {
       1000.0 * (lrp_ProgramStop - lrp_ProgramStart) / CLOCKS_PER_SEC;
 
   fprintf(lrp_ReportFile, "lrp runtime (ms): %f\n", duration);
+  fprintf(lrp_ReportFile, "loops seen at depth %ld : %lu\n", lrp_TestDepth,
+          LoopTimingEntries.size());
 
   if (lrp_ReportFile)
     fclose(lrp_ReportFile);
