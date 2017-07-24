@@ -22,6 +22,8 @@
 #include <assert.h>
 // using assert
 
+bool lrp_ProfilingEnabled = true;
+
 struct TimingEntry {
   TimingEntry() : m_NumSections(0), m_TotalDuration(0), m_LastEntered(0) {}
 
@@ -47,6 +49,9 @@ long int lrp_TestDepth = -1;
 long int lrp_CurrentDepth = -1;
 
 void lrp_report(void) {
+  if (!lrp_ProfilingEnabled)
+    return;
+
   double duration =
       1000.0 * (lrp_ProgramStop - lrp_ProgramStart) / CLOCKS_PER_SEC;
 
@@ -56,6 +61,9 @@ void lrp_report(void) {
 }
 
 void lrp_program_stop(void) {
+  if (!lrp_ProfilingEnabled)
+    return;
+
   fprintf(stderr, "lrp runtime stop!\n");
   lrp_ProgramStop = clock();
 
@@ -65,6 +73,9 @@ void lrp_program_stop(void) {
 }
 
 void lrp_program_start(void) {
+  if (!lrp_ProfilingEnabled)
+    return;
+
   int rc = atexit(lrp_program_stop);
 
   if (rc) {
@@ -80,6 +91,9 @@ void lrp_program_start(void) {
 }
 
 void lrp_loop_start(uint32_t id) {
+  if (!lrp_ProfilingEnabled)
+    return;
+
   ++lrp_CurrentDepth;
   if (lrp_CurrentDepth != lrp_TestDepth)
     return;
@@ -99,6 +113,9 @@ void lrp_loop_start(uint32_t id) {
 }
 
 void lrp_loop_stop(uint32_t id) {
+  if (!lrp_ProfilingEnabled)
+    return;
+
   if (lrp_CurrentDepth == lrp_TestDepth) {
     auto found = LoopTimingEntries.find(id);
 
