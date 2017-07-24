@@ -5,6 +5,8 @@
 #ifndef LOOPRUNTIMEPROFILER_HPP
 #define LOOPRUNTIMEPROFILER_HPP
 
+#include "Config.hpp"
+
 #include "llvm/IR/Type.h"
 // using llvm::Type
 
@@ -98,8 +100,9 @@ public:
     llvm::SmallVector<llvm::Value *, 1> args;
 
     args.push_back(llvm::ConstantInt::get(
-        llvm::IntegerType::get(curCtx, 32),
-        std::numeric_limits<LoopInstrumentationID_t>::digits));
+        llvm::IntegerType::get(
+            curCtx, std::numeric_limits<LoopInstrumentationID_t>::digits),
+        id));
 
     llvm::CallInst::Create(llvm::cast<llvm::Function>(startFunc), "",
                            startInsertionPoint);
