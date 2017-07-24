@@ -1,6 +1,6 @@
 # cmake file
 
-set(PRJ_RT_NAME lrp_rt)
+set(PRJ_RT_NAME lrp_timing_rt)
 
 set(SOURCES ${PRJ_RT_NAME}.cpp)
 
