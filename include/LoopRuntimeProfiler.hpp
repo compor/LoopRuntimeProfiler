@@ -115,6 +115,8 @@ template <typename RuntimeCallbacksPolicy = DefaultRuntimeCallbacksPolicy,
 class Instrumenter : private LoopInstrumentationPolicy,
                      private RuntimeCallbacksPolicy {
 public:
+  Instrumenter() : m_InitFnName("lrp_init") {}
+
   void instrumentProgram(llvm::Module &CurMod) {
     auto *func = CurMod.getFunction(RuntimeCallbacksPolicy::programEntry());
 
@@ -127,14 +129,16 @@ public:
   void instrumentProgram(llvm::Function &CurFunc) {
     auto &curCtx = CurFunc.getContext();
     auto *curModule = CurFunc.getParent();
-    auto *insertionPoint = CurFunc.getEntryBlock().getFirstNonPHIOrDbg();
+    auto *insertBefore = CurFunc.getEntryBlock().getFirstNonPHIOrDbg();
 
     auto *func =
         curModule->getOrInsertFunction(RuntimeCallbacksPolicy::programStart(),
                                        llvm::Type::getVoidTy(curCtx), nullptr);
 
-    llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "",
-                           insertionPoint);
+    llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "", insertBefore);
+
+    auto *insertPoint = instrumentInit(CurFunc.getEntryBlock());
+    assert(insertPoint && "Call to runtime init has already been added!");
 
     return;
   }
@@ -173,6 +177,27 @@ public:
     llvm::CallInst::Create(llvm::cast<llvm::Function>(endFunc), "",
                            endInsertionPoint);
     return;
+  }
+
+private:
+  const std::string m_InitFnName;
+
+  llvm::Instruction *instrumentInit(llvm::BasicBlock &BB) {
+    static bool hasBeenCalled = false;
+
+    if (hasBeenCalled)
+      return nullptr;
+
+    hasBeenCalled = true;
+    auto &curCtx = BB.getContext();
+    auto *curModule = BB.getParent()->getParent();
+    auto *insertBefore = BB.getFirstNonPHIOrDbg();
+
+    auto *func = curModule->getOrInsertFunction(
+        m_InitFnName, llvm::Type::getVoidTy(curCtx), nullptr);
+
+    return llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "",
+                                  insertBefore);
   }
 };
 
