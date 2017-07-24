@@ -127,6 +127,13 @@ public:
   }
 
   void instrumentProgram(llvm::Function &CurFunc) {
+    static bool hasBeenCalled = false;
+
+    if (hasBeenCalled)
+      return;
+
+    hasBeenCalled = true;
+
     auto &curCtx = CurFunc.getContext();
     auto *curModule = CurFunc.getParent();
     auto *insertBefore = CurFunc.getEntryBlock().getFirstNonPHIOrDbg();
