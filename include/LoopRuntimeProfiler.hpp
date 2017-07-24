@@ -182,10 +182,10 @@ public:
         id));
 
     auto *call1 = llvm::CallInst::Create(llvm::cast<llvm::Function>(startFunc),
-                                         "", startInsertionPoint);
+                                         args, "", startInsertionPoint);
 
     auto *call2 = llvm::CallInst::Create(llvm::cast<llvm::Function>(endFunc),
-                                         "", endInsertionPoint);
+                                         args, "", endInsertionPoint);
 
     return std::make_pair(call1, call2);
   }
