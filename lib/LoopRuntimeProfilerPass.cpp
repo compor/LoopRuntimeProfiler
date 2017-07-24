@@ -236,10 +236,13 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
         }), workList.end());
 
     std::reverse(workList.begin(), workList.end());
-  }
 
-  for (auto *e : workList)
-    instrumenter.instrumentLoop(*e);
+    for (auto *e : workList)
+      instrumenter.instrumentLoop(*e);
+
+    llvm::errs() << "instrumented " << workList.size() << " loops in function: "
+                 << (CurFunc.hasName() ? CurFunc.getName() : "") << "\n";
+  }
 
   return hasModuleChanged;
 }
