@@ -34,16 +34,15 @@ std::map<uint32_t, TimingEntry> LoopTimingEntries;
 
 extern "C" {
 
-clock_t lrp_program_start_timestamp;
-clock_t lrp_program_stop_timestamp;
+clock_t lrp_ProgramStart;
+clock_t lrp_ProgramStop;
 
-long int lrp_test_depth = -1;
-long int lrp_current_depth = -1;
+long int lrp_TestDepth = -1;
+long int lrp_CurrentDepth = -1;
 
 void lrp_report(void) {
-  double duration = 1000.0 *
-                    (lrp_program_stop_timestamp - lrp_program_start_timestamp) /
-                    CLOCKS_PER_SEC;
+  double duration =
+      1000.0 * (lrp_ProgramStop - lrp_ProgramStart) / CLOCKS_PER_SEC;
 
   fprintf(stderr, "lrp runtime (ms): %f\n", duration);
 
@@ -52,7 +51,7 @@ void lrp_report(void) {
 
 void lrp_program_stop(void) {
   fprintf(stderr, "lrp runtime stop!\n");
-  lrp_program_stop_timestamp = clock();
+  lrp_ProgramStop = clock();
 
   lrp_report();
 
@@ -69,14 +68,14 @@ void lrp_program_start(void) {
   }
 
   fprintf(stderr, "lrp runtime start!\n");
-  lrp_program_start_timestamp = clock();
+  lrp_ProgramStart = clock();
 
   return;
 }
 
 void lrp_loop_start(uint32_t id) {
-  ++lrp_current_depth;
-  if (lrp_current_depth != lrp_test_depth)
+  ++lrp_CurrentDepth;
+  if (lrp_CurrentDepth != lrp_TestDepth)
     return;
 
   auto found = LoopTimingEntries.find(id);
@@ -94,7 +93,7 @@ void lrp_loop_start(uint32_t id) {
 }
 
 void lrp_loop_stop(uint32_t id) {
-  if (lrp_current_depth == lrp_test_depth) {
+  if (lrp_CurrentDepth == lrp_TestDepth) {
     auto found = LoopTimingEntries.find(id);
 
     assert(found != LoopTimingEntries.end() &&
@@ -106,7 +105,7 @@ void lrp_loop_stop(uint32_t id) {
     found->second.m_LastEntered = 0;
   }
 
-  --lrp_current_depth;
+  --lrp_CurrentDepth;
 
   return;
 }
