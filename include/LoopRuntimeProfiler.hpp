@@ -45,6 +45,10 @@
 // using std::pair
 // using std::make_pair
 
+#include <tuple>
+// using std::tuple
+// using std::make_tuple
+
 #include <cstdint>
 // using std::uint32_t
 
@@ -152,17 +156,13 @@ public:
     return call;
   }
 
-  std::pair<llvm::CallInst *, llvm::CallInst *>
-  instrumentLoop(llvm::Loop &CurLoop) {
+  decltype(auto) instrumentLoop(llvm::Loop &CurLoop) {
     assert(CurLoop.getLoopPreheader() && "Loop does not have a preheader!");
-    assert(CurLoop.getExitingBlock() &&
-           "Loop does not have a single exiting block!");
 
     auto &curCtx = CurLoop.getHeader()->getContext();
     auto *curModule = CurLoop.getHeader()->getParent()->getParent();
     auto *startInsertionPoint =
         CurLoop.getLoopPreheader()->getFirstNonPHIOrDbg();
-    auto *endInsertionPoint = CurLoop.getExitBlock()->getFirstNonPHIOrDbg();
 
     auto *startFunc = curModule->getOrInsertFunction(
         RuntimeCallbacksPolicy::loopStart(), llvm::Type::getVoidTy(curCtx),
@@ -184,10 +184,19 @@ public:
     auto *call1 = llvm::CallInst::Create(llvm::cast<llvm::Function>(startFunc),
                                          args, "", startInsertionPoint);
 
-    auto *call2 = llvm::CallInst::Create(llvm::cast<llvm::Function>(endFunc),
-                                         args, "", endInsertionPoint);
+    llvm::SmallVector<llvm::BasicBlock *, 5> exits;
+    CurLoop.getExitBlocks(exits);
 
-    return std::make_pair(call1, call2);
+    std::vector<llvm::CallInst *> calls(1, call1);
+
+    for (auto &e : exits) {
+      auto *call2 = llvm::CallInst::Create(llvm::cast<llvm::Function>(endFunc),
+                                           args, "", e->getFirstNonPHIOrDbg());
+
+      calls.push_back(call2);
+    }
+
+    return std::make_tuple(calls);
   }
 
 private:
