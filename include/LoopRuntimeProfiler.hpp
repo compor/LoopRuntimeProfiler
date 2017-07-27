@@ -7,16 +7,11 @@
 
 #include "Config.hpp"
 
-#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-#include "AnnotateLoops.hpp"
-#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-
 #include "llvm/IR/Type.h"
 // using llvm::Type
 
 #include "llvm/IR/DerivedTypes.h"
 // using llvm::FunctionType
-// using llvm::IntegerType
 
 #include "llvm/IR/Value.h"
 // using llvm::Value
@@ -46,6 +41,7 @@
 // using llvm::cast
 
 #include <utility>
+// std::forward
 // using std::pair
 // using std::make_pair
 
@@ -68,24 +64,11 @@
 namespace icsa {
 namespace LoopRuntimeProfiler {
 
-using LoopInstrumentationID_t = std::uint32_t;
-
 extern std::string ProfilerProgramEntryFuncName;
 extern std::string ProfilerProgramStartFuncName;
 extern std::string ProfilerProgramStopFuncName;
 extern std::string ProfilerLoopStartFuncName;
 extern std::string ProfilerLoopStopFuncName;
-
-struct IncrementLoopInstrumentationPolicy {
-  IncrementLoopInstrumentationPolicy() : m_ID(0) {}
-
-  LoopInstrumentationID_t getInstrumentationID(const llvm::Loop &CurLoop) {
-    return ++m_ID;
-  }
-
-private:
-  LoopInstrumentationID_t m_ID;
-};
 
 struct DefaultRuntimeCallbacksPolicy {
   DefaultRuntimeCallbacksPolicy()
@@ -108,24 +91,8 @@ private:
   const std::string m_PrgEntryFnName;
 };
 
-#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-struct AnnotatatedLoopInstrumentationPolicy {
-  AnnotatatedLoopInstrumentationPolicy() {}
-
-  LoopInstrumentationID_t getInstrumentationID(const llvm::Loop &CurLoop) {
-    return m_AL.hasAnnotatedId(CurLoop) ? m_AL.getAnnotatedId(CurLoop) : 0;
-  }
-
-private:
-  icsa::AnnotateLoops m_AL;
-};
-#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-
-template <typename RuntimeCallbacksPolicy = DefaultRuntimeCallbacksPolicy,
-          typename LoopInstrumentationPolicy =
-              IncrementLoopInstrumentationPolicy>
-class Instrumenter : private LoopInstrumentationPolicy,
-                     private RuntimeCallbacksPolicy {
+template <typename RuntimeCallbacksPolicy = DefaultRuntimeCallbacksPolicy>
+class Instrumenter : private RuntimeCallbacksPolicy {
 private:
   const std::string m_InitFnName;
 
@@ -156,13 +123,17 @@ private:
 public:
   Instrumenter() : m_InitFnName("lrp_init") {}
 
-  llvm::CallInst *instrumentProgram(llvm::Module &CurMod) {
+  template <typename... Ts>
+  llvm::CallInst *instrumentProgram(llvm::Module &CurMod, Ts... args) {
     auto *func = CurMod.getFunction(RuntimeCallbacksPolicy::programEntry());
 
-    return !func->isDeclaration() ? instrumentProgram(*func) : nullptr;
+    return !func->isDeclaration()
+               ? instrumentProgram(*func, std::forward<Ts>(args)...)
+               : nullptr;
   }
 
-  llvm::CallInst *instrumentProgram(llvm::Function &CurFunc) {
+  template <typename... Ts>
+  llvm::CallInst *instrumentProgram(llvm::Function &CurFunc, Ts... args) {
     static bool hasBeenCalled = false;
 
     if (hasBeenCalled)
@@ -173,10 +144,11 @@ public:
     auto *func = insertVarargFunction(RuntimeCallbacksPolicy::programStart(),
                                       CurFunc.getParent());
 
-    llvm::SmallVector<llvm::Value *, 1> args;
+    constexpr const int size = sizeof...(args);
+    llvm::SmallVector<llvm::Value *, size> fargs{args...};
 
     auto *insertBefore = CurFunc.getEntryBlock().getFirstNonPHIOrDbg();
-    auto *call = llvm::CallInst::Create(llvm::cast<llvm::Function>(func), args,
+    auto *call = llvm::CallInst::Create(llvm::cast<llvm::Function>(func), fargs,
                                         "", insertBefore);
 
     auto *insertPoint = instrumentInit(CurFunc.getEntryBlock());
@@ -185,7 +157,8 @@ public:
     return call;
   }
 
-  decltype(auto) instrumentLoop(llvm::Loop &CurLoop) {
+  template <typename... Ts>
+  decltype(auto) instrumentLoop(llvm::Loop &CurLoop, Ts... args) {
     assert(CurLoop.getLoopPreheader() && "Loop does not have a preheader!");
 
     auto &curCtx = CurLoop.getHeader()->getContext();
@@ -196,19 +169,13 @@ public:
     auto *endFunc =
         insertVarargFunction(RuntimeCallbacksPolicy::loopStop(), curModule);
 
-    auto id = LoopInstrumentationPolicy::getInstrumentationID(CurLoop);
-
-    llvm::SmallVector<llvm::Value *, 1> args;
-
-    args.push_back(llvm::ConstantInt::get(
-        llvm::IntegerType::get(
-            curCtx, std::numeric_limits<LoopInstrumentationID_t>::digits),
-        id));
+    constexpr const int size = sizeof...(args);
+    llvm::SmallVector<llvm::Value *, size> fargs{args...};
 
     auto *startInsertionPoint =
         CurLoop.getLoopPreheader()->getFirstNonPHIOrDbg();
     auto *call1 = llvm::CallInst::Create(llvm::cast<llvm::Function>(startFunc),
-                                         args, "", startInsertionPoint);
+                                         fargs, "", startInsertionPoint);
 
     llvm::SmallVector<llvm::BasicBlock *, 5> exits;
     CurLoop.getExitBlocks(exits);
@@ -217,7 +184,7 @@ public:
 
     for (auto &e : exits) {
       auto *call2 = llvm::CallInst::Create(llvm::cast<llvm::Function>(endFunc),
-                                           args, "", e->getFirstNonPHIOrDbg());
+                                           fargs, "", e->getFirstNonPHIOrDbg());
 
       calls.push_back(call2);
     }

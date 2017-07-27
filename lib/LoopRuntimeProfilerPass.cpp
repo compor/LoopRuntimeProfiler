@@ -20,6 +20,9 @@
 #include "llvm/IR/Type.h"
 // using llvm::Type
 
+#include "llvm/IR/DerivedTypes.h"
+// using llvm::IntegerType
+
 #include "llvm/IR/Instruction.h"
 // using llvm::Instruction
 
@@ -191,13 +194,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     loopIDs.insert(e);
 
   LoopRuntimeProfiler::Instrumenter<
-      LoopRuntimeProfiler::DefaultRuntimeCallbacksPolicy,
-#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-      LoopRuntimeProfiler::AnnotatatedLoopInstrumentationPolicy
-#else
-      LoopRuntimeProfiler::IncrementLoopInstrumentationPolicy
-#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-      > instrumenter;
+      LoopRuntimeProfiler::DefaultRuntimeCallbacksPolicy> instrumenter;
 
   instrumenter.instrumentProgram(CurMod);
 
@@ -237,8 +234,16 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
     std::reverse(workList.begin(), workList.end());
 
-    for (auto *e : workList)
-      instrumenter.instrumentLoop(*e);
+    for (auto *e : workList) {
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+      auto *id = llvm::ConstantInt::get(
+          llvm::IntegerType::get(
+              CurMod.getContext(),
+              std::numeric_limits<AnnotateLoops::LoopID_t>::digits),
+          al.getAnnotatedId(*e));
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+      instrumenter.instrumentLoop(*e, id);
+    }
 
     llvm::errs() << "instrumented " << workList.size() << " loops in function: "
                  << (CurFunc.hasName() ? CurFunc.getName() : "") << "\n";
