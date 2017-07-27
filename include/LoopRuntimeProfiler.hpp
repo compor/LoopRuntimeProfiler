@@ -14,6 +14,10 @@
 #include "llvm/IR/Type.h"
 // using llvm::Type
 
+#include "llvm/IR/DerivedTypes.h"
+// using llvm::FunctionType
+// using llvm::IntegerType
+
 #include "llvm/IR/Value.h"
 // using llvm::Value
 
@@ -143,12 +147,16 @@ public:
     auto *curModule = CurFunc.getParent();
     auto *insertBefore = CurFunc.getEntryBlock().getFirstNonPHIOrDbg();
 
-    auto *func =
-        curModule->getOrInsertFunction(RuntimeCallbacksPolicy::programStart(),
-                                       llvm::Type::getVoidTy(curCtx), nullptr);
+    auto *funcType =
+        llvm::FunctionType::get(llvm::Type::getVoidTy(curCtx), true);
 
-    auto *call = llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "",
-                                        insertBefore);
+    auto *func = curModule->getOrInsertFunction(
+        RuntimeCallbacksPolicy::programStart(), funcType);
+
+    llvm::SmallVector<llvm::Value *, 1> args;
+
+    auto *call = llvm::CallInst::Create(llvm::cast<llvm::Function>(func), args,
+                                        "", insertBefore);
 
     auto *insertPoint = instrumentInit(CurFunc.getEntryBlock());
     assert(insertPoint && "Call to runtime init has already been added!");
@@ -164,13 +172,14 @@ public:
     auto *startInsertionPoint =
         CurLoop.getLoopPreheader()->getFirstNonPHIOrDbg();
 
+    auto *funcType =
+        llvm::FunctionType::get(llvm::Type::getVoidTy(curCtx), true);
+
     auto *startFunc = curModule->getOrInsertFunction(
-        RuntimeCallbacksPolicy::loopStart(), llvm::Type::getVoidTy(curCtx),
-        llvm::Type::getInt32Ty(curCtx), nullptr);
+        RuntimeCallbacksPolicy::loopStart(), funcType);
 
     auto *endFunc = curModule->getOrInsertFunction(
-        RuntimeCallbacksPolicy::loopStop(), llvm::Type::getVoidTy(curCtx),
-        llvm::Type::getInt32Ty(curCtx), nullptr);
+        RuntimeCallbacksPolicy::loopStop(), funcType);
 
     auto id = LoopInstrumentationPolicy::getInstrumentationID(CurLoop);
 

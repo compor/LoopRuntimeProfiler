@@ -67,18 +67,6 @@ void lrp_report(void) {
   return;
 }
 
-void lrp_program_stop(void) {
-  if (!lrp_ProfilingEnabled)
-    return;
-
-  fprintf(lrp_ReportFile, "lrp runtime stop!\n");
-  lrp_ProgramStop = clock();
-
-  lrp_report();
-
-  return;
-}
-
 void lrp_program_start(void) {
   if (!lrp_ProfilingEnabled)
     return;
@@ -97,14 +85,26 @@ void lrp_program_start(void) {
   return;
 }
 
-void lrp_loop_start(uint32_t id) {
+void lrp_program_stop(void) {
+  if (!lrp_ProfilingEnabled)
+    return;
+
+  fprintf(lrp_ReportFile, "lrp runtime stop!\n");
+  lrp_ProgramStop = clock();
+
+  lrp_report();
+
+  return;
+}
+
+void lrp_loop_start(void) {
   if (!lrp_ProfilingEnabled)
     return;
 
   return;
 }
 
-void lrp_loop_stop(uint32_t id) {
+void lrp_loop_stop(void) {
   if (!lrp_ProfilingEnabled)
     return;
 
