@@ -126,6 +126,33 @@ template <typename RuntimeCallbacksPolicy = DefaultRuntimeCallbacksPolicy,
               IncrementLoopInstrumentationPolicy>
 class Instrumenter : private LoopInstrumentationPolicy,
                      private RuntimeCallbacksPolicy {
+private:
+  const std::string m_InitFnName;
+
+  decltype(auto) insertVarargFunction(const std::string &name,
+                                      llvm::Module *CurMod) {
+    auto *funcType = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(CurMod->getContext()), true);
+
+    return CurMod->getOrInsertFunction(name, funcType);
+  }
+
+  llvm::CallInst *instrumentInit(llvm::BasicBlock &BB) {
+    static bool hasBeenCalled = false;
+
+    if (hasBeenCalled)
+      return nullptr;
+
+    hasBeenCalled = true;
+
+    auto *func =
+        insertVarargFunction(m_InitFnName, BB.getParent()->getParent());
+
+    auto *insertBefore = BB.getFirstNonPHIOrDbg();
+    return llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "",
+                                  insertBefore);
+  }
+
 public:
   Instrumenter() : m_InitFnName("lrp_init") {}
 
@@ -143,18 +170,12 @@ public:
 
     hasBeenCalled = true;
 
-    auto &curCtx = CurFunc.getContext();
-    auto *curModule = CurFunc.getParent();
-    auto *insertBefore = CurFunc.getEntryBlock().getFirstNonPHIOrDbg();
-
-    auto *funcType =
-        llvm::FunctionType::get(llvm::Type::getVoidTy(curCtx), true);
-
-    auto *func = curModule->getOrInsertFunction(
-        RuntimeCallbacksPolicy::programStart(), funcType);
+    auto *func = insertVarargFunction(RuntimeCallbacksPolicy::programStart(),
+                                      CurFunc.getParent());
 
     llvm::SmallVector<llvm::Value *, 1> args;
 
+    auto *insertBefore = CurFunc.getEntryBlock().getFirstNonPHIOrDbg();
     auto *call = llvm::CallInst::Create(llvm::cast<llvm::Function>(func), args,
                                         "", insertBefore);
 
@@ -169,17 +190,11 @@ public:
 
     auto &curCtx = CurLoop.getHeader()->getContext();
     auto *curModule = CurLoop.getHeader()->getParent()->getParent();
-    auto *startInsertionPoint =
-        CurLoop.getLoopPreheader()->getFirstNonPHIOrDbg();
 
-    auto *funcType =
-        llvm::FunctionType::get(llvm::Type::getVoidTy(curCtx), true);
-
-    auto *startFunc = curModule->getOrInsertFunction(
-        RuntimeCallbacksPolicy::loopStart(), funcType);
-
-    auto *endFunc = curModule->getOrInsertFunction(
-        RuntimeCallbacksPolicy::loopStop(), funcType);
+    auto *startFunc =
+        insertVarargFunction(RuntimeCallbacksPolicy::loopStart(), curModule);
+    auto *endFunc =
+        insertVarargFunction(RuntimeCallbacksPolicy::loopStop(), curModule);
 
     auto id = LoopInstrumentationPolicy::getInstrumentationID(CurLoop);
 
@@ -190,6 +205,8 @@ public:
             curCtx, std::numeric_limits<LoopInstrumentationID_t>::digits),
         id));
 
+    auto *startInsertionPoint =
+        CurLoop.getLoopPreheader()->getFirstNonPHIOrDbg();
     auto *call1 = llvm::CallInst::Create(llvm::cast<llvm::Function>(startFunc),
                                          args, "", startInsertionPoint);
 
@@ -206,27 +223,6 @@ public:
     }
 
     return std::make_tuple(calls);
-  }
-
-private:
-  const std::string m_InitFnName;
-
-  llvm::CallInst *instrumentInit(llvm::BasicBlock &BB) {
-    static bool hasBeenCalled = false;
-
-    if (hasBeenCalled)
-      return nullptr;
-
-    hasBeenCalled = true;
-    auto &curCtx = BB.getContext();
-    auto *curModule = BB.getParent()->getParent();
-    auto *insertBefore = BB.getFirstNonPHIOrDbg();
-
-    auto *func = curModule->getOrInsertFunction(
-        m_InitFnName, llvm::Type::getVoidTy(curCtx), nullptr);
-
-    return llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "",
-                                  insertBefore);
   }
 };
 
