@@ -34,6 +34,9 @@
 #include "llvm/IR/Module.h"
 // using llvm::Module
 
+#include "llvm/Analysis/CallGraph.h"
+// using llvm::CallGraph
+
 #include "llvm/Analysis/LoopInfo.h"
 // using llvm::LoopInfoWrapperPass
 // using llvm::LoopInfo
@@ -186,6 +189,11 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   std::set<unsigned> loopIDs;
 
   if (OperationMode == LRPOpts::callgraph) {
+    llvm::CallGraph CG(CurMod);
+    LoopRuntimeProfiler::LoopRuntimeCallGraphProfiler LRPCGProf(CG);
+
+    LRPCGProf.getLoops();
+
     return false;
   }
 
