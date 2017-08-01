@@ -1,3 +1,8 @@
+//
+//
+//
+
+#include "Utils.hpp"
 
 #include "LoopRuntimeCallGraphProfiler.hpp"
 
@@ -18,9 +23,10 @@ LoopRuntimeCallGraphProfiler::LoopRuntimeCallGraphProfiler(
   populateLoopInfos();
 
   // clang-format off
-  DEBUG_CMD(for (const auto &e : m_LoopMap)
-              for (const auto *l : e.second)
-                l->print(llvm::errs()));
+  DEBUG_CMD(
+  for (const auto &e : m_LoopMap)
+    for (const auto *l : e.second)
+      l->print(llvm::errs()));
   // clang-format on
 
   return;
