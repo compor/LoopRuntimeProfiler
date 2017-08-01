@@ -8,6 +8,9 @@
 #include "llvm/Analysis/LoopInfo.h"
 // using llvm::LoopInfo
 
+#include "llvm/IR/Dominators.h"
+// using llvm::DominatorTree
+
 #include "llvm/ADT/SCCIterator.h"
 // using llvm::scc_iterator
 
@@ -39,6 +42,23 @@ public:
 
         if (func && func->hasName())
           llvm::dbgs() << func->getName() << "\n";
+      }
+
+    llvm::DominatorTree DT;
+
+    for (const auto &e : m_LoopMap)
+      for (const auto &SCCNode : e.first) {
+        auto *func = SCCNode->getFunction();
+
+        if (func && !func->isDeclaration()) {
+          DT.recalculate(*func);
+
+          llvm::LoopInfo LI;
+          LI.Analyze(DT);
+
+          for(const auto &l : LI)
+            llvm::dbgs() << *l << "\n";
+        }
       }
 
     return;
