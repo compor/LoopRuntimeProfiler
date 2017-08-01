@@ -126,6 +126,16 @@ static llvm::RegisterStandardPasses RegisterLoopRuntimeProfilerPass(
 
 //
 
+enum LRPOpts {
+  module,
+  callgraph,
+};
+
+static llvm::cl::opt<LRPOpts> OperationMode(
+    "lrp-mode", llvm::cl::desc("operation mode"),
+    llvm::cl::values(clEnumVal(module, "module mode"),
+                     clEnumVal(callgraph, "call graph mode"), nullptr));
+
 static llvm::cl::opt<unsigned int>
     LoopDepthLB("lrp-loop-depth-lb",
                 llvm::cl::desc("loop depth lower bound (inclusive)"),
@@ -174,6 +184,10 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   bool useLoopIDWhitelist = !LoopIDWhiteListFilename.empty();
   llvm::SmallVector<llvm::Loop *, 16> workList;
   std::set<unsigned> loopIDs;
+
+  if (OperationMode == LRPOpts::callgraph) {
+    return false;
+  }
 
   if (useLoopIDWhitelist) {
     std::ifstream loopIDWhiteListFile{LoopIDWhiteListFilename};
