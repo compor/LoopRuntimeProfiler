@@ -1,3 +1,6 @@
+//
+//
+//
 
 #ifndef LOOPRUNTIMECALLGRAPHPROFILER_HPP
 #define LOOPRUNTIMECALLGRAPHPROFILER_HPP
@@ -31,6 +34,8 @@ class LoopRuntimeCallGraphProfiler {
   using LoopInfoMapTy =
       std::map<const SCCTy *, std::set<const llvm::LoopInfo *>>;
   using LoopMapTy = std::map<const SCCTy *, std::set<const llvm::Loop *>>;
+  using iterator = LoopMapTy::iterator;
+  using const_iterator = LoopMapTy::const_iterator;
 
   void populateSCCs();
   void populateLoopInfos();
@@ -45,6 +50,11 @@ public:
   LoopRuntimeCallGraphProfiler(const llvm::CallGraph &CG);
   LoopRuntimeCallGraphProfiler(const LoopRuntimeCallGraphProfiler &) = delete;
   LoopRuntimeCallGraphProfiler(const LoopRuntimeCallGraphProfiler &&) = delete;
+
+  inline iterator begin() { return m_LoopMap.begin(); }
+  inline iterator end() { return m_LoopMap.end(); }
+  inline const_iterator begin() const { return m_LoopMap.begin(); }
+  inline const_iterator end() const { return m_LoopMap.end(); }
 };
 
 } // namespace LoopRuntimeProfiler end

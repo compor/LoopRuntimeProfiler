@@ -5,6 +5,8 @@
 #ifndef LOOPRUNTIMEPROFILERPASS_HPP
 #define LOOPRUNTIMEPROFILERPASS_HPP
 
+#include "Utils.hpp"
+
 #include "llvm/Pass.h"
 // using llvm::ModulePass
 
