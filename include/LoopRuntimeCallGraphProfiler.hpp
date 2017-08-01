@@ -41,6 +41,8 @@ class LoopRuntimeCallGraphProfiler {
 
 public:
   LoopRuntimeCallGraphProfiler(const llvm::CallGraph &CG);
+  LoopRuntimeCallGraphProfiler(const LoopRuntimeCallGraphProfiler &) = delete;
+  LoopRuntimeCallGraphProfiler(const LoopRuntimeCallGraphProfiler &&) = delete;
 };
 
 } // namespace LoopRuntimeProfiler end
