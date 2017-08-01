@@ -26,19 +26,20 @@ namespace LoopRuntimeProfiler {
 
 class LoopRuntimeCallGraphProfiler {
   using SCCTy = llvm::scc_iterator<llvm::CallGraph *>::value_type;
+  using LoopInfoMapTy = std::map<SCCTy *, std::set<llvm::LoopInfo *>>;
+  using LoopMapTy = std::map<SCCTy *, std::set<llvm::Loop *>>;
 
-public:
-  using LoopMapTy = std::map<SCCTy, std::set<llvm::Loop *>>;
-
-  LoopRuntimeCallGraphProfiler(llvm::CallGraph &CG) : m_CG(CG) {}
-
-  void getLoops();
-
-private:
   void populateSCCs();
+  void populateLoopInfos();
 
   llvm::CallGraph &m_CG;
+  std::vector<SCCTy> m_SCCs;
+  std::vector<llvm::LoopInfo> m_LoopInfos;
+  LoopInfoMapTy m_LoopInfoMap;
   LoopMapTy m_LoopMap;
+
+public:
+  LoopRuntimeCallGraphProfiler(llvm::CallGraph &CG);
 };
 
 } // namespace LoopRuntimeProfiler end

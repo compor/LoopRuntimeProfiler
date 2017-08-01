@@ -14,33 +14,14 @@
 namespace icsa {
 namespace LoopRuntimeProfiler {
 
-void LoopRuntimeCallGraphProfiler::getLoops() {
+LoopRuntimeCallGraphProfiler::LoopRuntimeCallGraphProfiler(llvm::CallGraph &CG)
+    : m_CG(CG) {
   populateSCCs();
+  populateLoopInfos();
 
   for (const auto &e : m_LoopMap)
-    for (const auto &SCCNode : e.first) {
-      auto *func = SCCNode->getFunction();
-
-      if (func && func->hasName())
-        llvm::dbgs() << func->getName() << "\n";
-    }
-
-  llvm::DominatorTree DT;
-
-  for (const auto &e : m_LoopMap)
-    for (const auto &SCCNode : e.first) {
-      auto *func = SCCNode->getFunction();
-
-      if (func && !func->isDeclaration()) {
-        DT.recalculate(*func);
-
-        llvm::LoopInfo LI;
-        LI.Analyze(DT);
-
-        for (const auto &l : LI)
-          llvm::dbgs() << *l << "\n";
-      }
-    }
+    for (const auto *l : e.second)
+      l->print(llvm::dbgs());
 
   return;
 }
@@ -49,11 +30,35 @@ void LoopRuntimeCallGraphProfiler::populateSCCs() {
   auto SCCIter = llvm::scc_begin(&m_CG);
   auto SCCIterEnd = llvm::scc_end(&m_CG);
 
-  for (; SCCIter != SCCIterEnd; ++SCCIter) {
-    auto &CurSCC = *SCCIter;
-    std::set<llvm::Loop *> Loops;
+  for (; SCCIter != SCCIterEnd; ++SCCIter)
+    m_SCCs.emplace_back(*SCCIter);
 
-    m_LoopMap.emplace(CurSCC, Loops);
+  return;
+}
+
+void LoopRuntimeCallGraphProfiler::populateLoopInfos() {
+  for (auto &SCC : m_SCCs) {
+    m_LoopInfoMap.emplace(&SCC, std::set<llvm::LoopInfo *>());
+    m_LoopMap.emplace(&SCC, std::set<llvm::Loop *>());
+
+    for (auto &SCCNode : SCC) {
+      auto *CurFunc = SCCNode->getFunction();
+
+      if (CurFunc && !CurFunc->isDeclaration()) {
+        llvm::DominatorTree DT;
+        DT.recalculate(*CurFunc);
+
+        m_LoopInfos.emplace_back(llvm::LoopInfo());
+        m_LoopInfos.back().Analyze(DT);
+      }
+
+      auto &loops = m_LoopMap.find(&SCC)->second;
+      for (auto *CurLoop : m_LoopInfos.back())
+        loops.insert(CurLoop);
+
+      auto &loopInfos = m_LoopInfoMap.find(&SCC)->second;
+      loopInfos.insert(&m_LoopInfos.back());
+    }
   }
 
   return;

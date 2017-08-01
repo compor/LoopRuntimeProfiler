@@ -192,8 +192,6 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     llvm::CallGraph CG(CurMod);
     LoopRuntimeProfiler::LoopRuntimeCallGraphProfiler LRPCGProf(CG);
 
-    LRPCGProf.getLoops();
-
     return false;
   }
 
