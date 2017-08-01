@@ -14,7 +14,8 @@
 namespace icsa {
 namespace LoopRuntimeProfiler {
 
-LoopRuntimeCallGraphProfiler::LoopRuntimeCallGraphProfiler(llvm::CallGraph &CG)
+LoopRuntimeCallGraphProfiler::LoopRuntimeCallGraphProfiler(
+    const llvm::CallGraph &CG)
     : m_CG(CG) {
   populateSCCs();
   populateLoopInfos();
@@ -37,11 +38,11 @@ void LoopRuntimeCallGraphProfiler::populateSCCs() {
 }
 
 void LoopRuntimeCallGraphProfiler::populateLoopInfos() {
-  for (auto &SCC : m_SCCs) {
-    m_LoopInfoMap.emplace(&SCC, std::set<llvm::LoopInfo *>());
-    m_LoopMap.emplace(&SCC, std::set<llvm::Loop *>());
+  for (const auto &SCC : m_SCCs) {
+    m_LoopInfoMap.emplace(&SCC, std::set<const llvm::LoopInfo *>());
+    m_LoopMap.emplace(&SCC, std::set<const llvm::Loop *>());
 
-    for (auto &SCCNode : SCC) {
+    for (const auto &SCCNode : SCC) {
       auto *CurFunc = SCCNode->getFunction();
 
       if (CurFunc && !CurFunc->isDeclaration()) {
@@ -53,7 +54,7 @@ void LoopRuntimeCallGraphProfiler::populateLoopInfos() {
       }
 
       auto &loops = m_LoopMap.find(&SCC)->second;
-      for (auto *CurLoop : m_LoopInfos.back())
+      for (const auto *CurLoop : m_LoopInfos.back())
         loops.insert(CurLoop);
 
       auto &loopInfos = m_LoopInfoMap.find(&SCC)->second;

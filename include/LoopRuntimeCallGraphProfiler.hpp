@@ -25,21 +25,22 @@ namespace icsa {
 namespace LoopRuntimeProfiler {
 
 class LoopRuntimeCallGraphProfiler {
-  using SCCTy = llvm::scc_iterator<llvm::CallGraph *>::value_type;
-  using LoopInfoMapTy = std::map<SCCTy *, std::set<llvm::LoopInfo *>>;
-  using LoopMapTy = std::map<SCCTy *, std::set<llvm::Loop *>>;
+  using SCCTy = llvm::scc_iterator<const llvm::CallGraph *>::value_type;
+  using LoopInfoMapTy =
+      std::map<const SCCTy *, std::set<const llvm::LoopInfo *>>;
+  using LoopMapTy = std::map<const SCCTy *, std::set<const llvm::Loop *>>;
 
   void populateSCCs();
   void populateLoopInfos();
 
-  llvm::CallGraph &m_CG;
+  const llvm::CallGraph &m_CG;
   std::vector<SCCTy> m_SCCs;
   std::vector<llvm::LoopInfo> m_LoopInfos;
   LoopInfoMapTy m_LoopInfoMap;
   LoopMapTy m_LoopMap;
 
 public:
-  LoopRuntimeCallGraphProfiler(llvm::CallGraph &CG);
+  LoopRuntimeCallGraphProfiler(const llvm::CallGraph &CG);
 };
 
 } // namespace LoopRuntimeProfiler end
