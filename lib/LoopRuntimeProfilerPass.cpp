@@ -12,7 +12,7 @@
 
 #include "LoopRuntimeProfilerPass.hpp"
 
-#include "LoopRuntimeCallGraphProfiler.hpp"
+#include "LoopRuntimeProfiler.hpp"
 
 #include "Instrumenter.hpp"
 

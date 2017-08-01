@@ -5,22 +5,21 @@
 #include "llvm/Analysis/CallGraph.h"
 // using llvm::CallGraph
 
-#include "llvm/Analysis/LoopInfo.h"
-// using llvm::LoopInfo
-
-#include "llvm/IR/Dominators.h"
-// using llvm::DominatorTree
-
 #include "llvm/ADT/SCCIterator.h"
 // using llvm::scc_iterator
-
-#include "llvm/Support/Debug.h"
-// using llvm::dbgs()
+// using llvm::scc_begin
+// using llvm::scc_end
 
 #include <map>
 // using std::map
 
 #include <set>
+// using std::set
+
+namespace llvm {
+class LoopInfo;
+class Loop;
+} // namespace llvm end
 
 namespace icsa {
 namespace LoopRuntimeProfiler {
@@ -33,51 +32,10 @@ public:
 
   LoopRuntimeCallGraphProfiler(llvm::CallGraph &CG) : m_CG(CG) {}
 
-  void getLoops() {
-    populateSCCs();
-
-    for (const auto &e : m_LoopMap)
-      for (const auto &SCCNode : e.first) {
-        auto *func = SCCNode->getFunction();
-
-        if (func && func->hasName())
-          llvm::dbgs() << func->getName() << "\n";
-      }
-
-    llvm::DominatorTree DT;
-
-    for (const auto &e : m_LoopMap)
-      for (const auto &SCCNode : e.first) {
-        auto *func = SCCNode->getFunction();
-
-        if (func && !func->isDeclaration()) {
-          DT.recalculate(*func);
-
-          llvm::LoopInfo LI;
-          LI.Analyze(DT);
-
-          for(const auto &l : LI)
-            llvm::dbgs() << *l << "\n";
-        }
-      }
-
-    return;
-  }
+  void getLoops();
 
 private:
-  void populateSCCs() {
-    auto SCCIter = llvm::scc_begin(&m_CG);
-    auto SCCIterEnd = llvm::scc_end(&m_CG);
-
-    for (; SCCIter != SCCIterEnd; ++SCCIter) {
-      auto &CurSCC = *SCCIter;
-      std::set<llvm::Loop *> Loops;
-
-      m_LoopMap.emplace(CurSCC, Loops);
-    }
-
-    return;
-  }
+  void populateSCCs();
 
   llvm::CallGraph &m_CG;
   LoopMapTy m_LoopMap;

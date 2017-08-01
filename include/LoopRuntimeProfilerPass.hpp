@@ -27,4 +27,4 @@ public:
 
 } // namespace icsa end
 
-#endif // end of innclude guard: LOOPRUNTIMEPROFILERPASS_HPP
+#endif // LOOPRUNTIMEPROFILERPASS_HPP
