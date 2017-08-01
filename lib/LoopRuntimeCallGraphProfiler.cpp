@@ -8,9 +8,6 @@
 #include "llvm/IR/Dominators.h"
 // using llvm::DominatorTree
 
-#include "llvm/Support/Debug.h"
-// using llvm::dbgs()
-
 namespace icsa {
 namespace LoopRuntimeProfiler {
 
@@ -20,9 +17,11 @@ LoopRuntimeCallGraphProfiler::LoopRuntimeCallGraphProfiler(
   populateSCCs();
   populateLoopInfos();
 
-  for (const auto &e : m_LoopMap)
-    for (const auto *l : e.second)
-      l->print(llvm::dbgs());
+  // clang-format off
+  DEBUG_CMD(for (const auto &e : m_LoopMap)
+              for (const auto *l : e.second)
+                l->print(llvm::errs()));
+  // clang-format on
 
   return;
 }

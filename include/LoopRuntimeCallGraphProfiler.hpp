@@ -2,6 +2,8 @@
 #ifndef LOOPRUNTIMECALLGRAPHPROFILER_HPP
 #define LOOPRUNTIMECALLGRAPHPROFILER_HPP
 
+#include "Config.hpp"
+
 #include "llvm/Analysis/CallGraph.h"
 // using llvm::CallGraph
 
