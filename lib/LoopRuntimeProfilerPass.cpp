@@ -131,13 +131,13 @@ static llvm::RegisterStandardPasses RegisterLoopRuntimeProfilerPass(
 
 enum LRPOpts {
   module,
-  callgraph,
+  callgraphscc,
 };
 
 static llvm::cl::opt<LRPOpts> OperationMode(
     "lrp-mode", llvm::cl::desc("operation mode"),
     llvm::cl::values(clEnumVal(module, "module mode"),
-                     clEnumVal(callgraph, "call graph mode"), nullptr));
+                     clEnumVal(callgraphscc, "call graph scc mode"), nullptr));
 
 static llvm::cl::opt<unsigned int>
     LoopDepthLB("lrp-loop-depth-lb",
@@ -188,7 +188,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   llvm::SmallVector<llvm::Loop *, 16> workList;
   std::set<unsigned> loopIDs;
 
-  if (OperationMode == LRPOpts::callgraph) {
+  if (OperationMode == LRPOpts::callgraphscc) {
     llvm::CallGraph CG(CurMod);
     LoopRuntimeProfiler::LoopRuntimeCallGraphProfiler LRPCGProf(CG);
 
