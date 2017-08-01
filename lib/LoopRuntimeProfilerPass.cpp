@@ -14,6 +14,8 @@
 
 #include "LoopRuntimeProfiler.hpp"
 
+#include "Instrumenter.hpp"
+
 #include "llvm/Pass.h"
 // using llvm::RegisterPass
 
