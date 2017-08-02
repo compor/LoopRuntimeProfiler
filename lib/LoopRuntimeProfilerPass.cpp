@@ -189,7 +189,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   std::set<unsigned> loopIDs;
 
   if (OperationMode == LRPOpts::callgraphscc) {
-    llvm::CallGraph CG(CurMod);
+    auto &CG = getAnalysis<llvm::CallGraphWrapperPass>().getCallGraph();
     LoopRuntimeProfiler::LoopRuntimeCallGraphProfiler LRPCGProf(CG);
 
     return false;
@@ -275,10 +275,11 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 }
 
 void LoopRuntimeProfilerPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
-  AU.addPreservedID(llvm::LoopSimplifyID);
   AU.addRequiredTransitiveID(llvm::LoopSimplifyID);
+  AU.addPreservedID(llvm::LoopSimplifyID);
   AU.addRequiredTransitive<llvm::LoopInfoWrapperPass>();
   AU.addPreserved<llvm::LoopInfoWrapperPass>();
+  AU.addRequiredTransitive<llvm::CallGraphWrapperPass>();
 
   return;
 }
