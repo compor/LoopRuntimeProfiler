@@ -134,6 +134,10 @@ static llvm::RegisterStandardPasses RegisterLoopRuntimeProfilerPass(
 
 static unsigned long int NumLoopsInstrumented = 0;
 
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+std::map<AnnotateLoops::LoopID_t, unsigned int> LoopsToSCCs;
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+
 enum LRPOpts {
   module,
   cgscc,
@@ -296,6 +300,13 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
         for (auto *e : workList) {
           instrumenter.instrumentLoop(*e, id);
+
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+          if (al.hasAnnotatedId(*e)) {
+            auto loopID = al.getAnnotatedId(*e);
+            LoopsToSCCs.emplace(loopID, tmpIdNum);
+          }
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
           NumLoopsInElementInstrumented++;
           NumLoopsInstrumented++;
