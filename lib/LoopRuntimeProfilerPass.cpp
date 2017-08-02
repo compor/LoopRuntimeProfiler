@@ -272,12 +272,15 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
       workList.clear();
 
       for (const auto &SCCNode : *SCCIter) {
-        auto *CurFunc = SCCNode->getFunction();
+        if (!SCCNode->getFunction() || SCCNode->getFunction()->isDeclaration())
+          continue;
 
-        if (CurFunc && !CurFunc->isDeclaration()) {
-          LI = &getAnalysis<llvm::LoopInfoWrapperPass>(*CurFunc).getLoopInfo();
-          prepareLoops();
-        }
+        auto &CurFunc = *SCCNode->getFunction();
+        LI = &getAnalysis<llvm::LoopInfoWrapperPass>(CurFunc).getLoopInfo();
+        prepareLoops();
+
+        if (!workList.size())
+          continue;
 
         auto tmpIdNum = ++idNum;
         auto *id = llvm::ConstantInt::get(
@@ -286,10 +289,10 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
                 std::numeric_limits<decltype(tmpIdNum)>::digits),
             tmpIdNum);
 
-        if (workList.size())
-          DEBUG_CMD(llvm::errs() << "instrumenting " << workList.size()
-                                 << "loops in SCC containing function "
-                                 << CurFunc->getName() << "\n");
+        DEBUG_CMD(llvm::errs() << "instrumenting " << workList.size()
+                               << "loops in SCC with id " << tmpIdNum
+                               << " containing function " << CurFunc.getName()
+                               << "\n");
 
         for (auto *e : workList) {
           instrumenter.instrumentLoop(*e, id);
