@@ -255,6 +255,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
       LoopRuntimeProfiler::DefaultRuntimeCallbacksPolicy> instrumenter;
 
   instrumenter.instrumentProgram(CurMod);
+  hasModuleChanged |= true;
 
   if (LRPOpts::cgscc == OperationMode) {
     auto &CG = getAnalysis<llvm::CallGraphWrapperPass>().getCallGraph();
@@ -281,6 +282,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
         for (auto *e : workList) {
           instrumenter.instrumentLoop(*e, id);
+          hasModuleChanged |= true;
         }
       }
     }
@@ -307,6 +309,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
             tmpIdNum);
 
         instrumenter.instrumentLoop(*e, id);
+        hasModuleChanged |= true;
       }
     }
   }
