@@ -85,6 +85,9 @@
 #include <fstream>
 // using std::ifstream
 
+#include <cstdint>
+// using std::uint32_t
+
 #include <limits>
 // using std::numeric_limits
 
@@ -265,6 +268,8 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
       }
     }
   } else if (LRPOpts::module == OperationMode) {
+    std::uint32_t idNum = 0;
+
     for (auto &CurFunc : CurMod) {
       if (CurFunc.isDeclaration())
         continue;
@@ -275,12 +280,17 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
       for (auto *e : workList) {
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+        auto tmpIdNum = al.getAnnotatedId(*e);
+#else
+        auto tmpIdNum = ++idNum;
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+
         auto *id = llvm::ConstantInt::get(
             llvm::IntegerType::get(
                 CurMod.getContext(),
-                std::numeric_limits<AnnotateLoops::LoopID_t>::digits),
-            al.getAnnotatedId(*e));
-#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+                std::numeric_limits<decltype(tmpIdNum)>::digits),
+            tmpIdNum);
+
         instrumenter.instrumentLoop(*e, id);
       }
     }
