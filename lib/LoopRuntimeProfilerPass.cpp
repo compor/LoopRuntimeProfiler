@@ -187,31 +187,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   bool useLoopIDWhitelist = !LoopIDWhiteListFilename.empty();
   llvm::SmallVector<llvm::Loop *, 16> workList;
   std::set<unsigned> loopIDs;
-
-  if (OperationMode == LRPOpts::cgscc) {
-    auto &CG = getAnalysis<llvm::CallGraphWrapperPass>().getCallGraph();
-
-    auto SCCIter = llvm::scc_begin(&CG);
-    auto SCCIterEnd = llvm::scc_end(&CG);
-
-    for (; SCCIter != SCCIterEnd; ++SCCIter)
-      for (const auto &SCCNode : *SCCIter) {
-        auto *CurFunc = SCCNode->getFunction();
-
-        if (CurFunc && !CurFunc->isDeclaration()) {
-          auto &LI =
-              getAnalysis<llvm::LoopInfoWrapperPass>(*CurFunc).getLoopInfo();
-
-          // clang-format off
-          DEBUG_CMD(
-          for (const auto *e : LI)
-              e->print(llvm::errs()));
-          // clang-format on
-        }
-      }
-
-    return false;
-  }
+  llvm::LoopInfo *LI = nullptr;
 
   if (useLoopIDWhitelist) {
     std::ifstream loopIDWhiteListFile{LoopIDWhiteListFilename};
@@ -219,10 +195,9 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     if (loopIDWhiteListFile.is_open()) {
       std::string loopID;
 
-      while (loopIDWhiteListFile >> loopID) {
+      while (loopIDWhiteListFile >> loopID)
         if (loopID.size() > 0 && loopID[0] != '#')
           loopIDs.insert(std::stoul(loopID));
-      }
 
       loopIDWhiteListFile.close();
     } else
@@ -238,55 +213,77 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
   instrumenter.instrumentProgram(CurMod);
 
-  for (auto &CurFunc : CurMod) {
-    if (CurFunc.isDeclaration())
-      continue;
-
-    auto &LI = getAnalysis<llvm::LoopInfoWrapperPass>(CurFunc).getLoopInfo();
-
-    workList.clear();
-
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+  auto loopsFilter = [&](llvm::Loop *e) {
     AnnotateLoops al;
 
-    auto loopsFilter = [&](llvm::Loop *e) {
-      if (al.hasAnnotatedId(*e)) {
-        auto id = al.getAnnotatedId(*e);
-        if (loopIDs.count(id))
-          workList.push_back(e);
-      }
-    };
-#else
-    auto loopsFilter = [&](llvm::Loop *e) { workList.push_back(e); };
-#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-
-    std::for_each(LI.begin(), LI.end(), loopsFilter);
-
-    for (auto i = 0; i < workList.size(); ++i)
-      for (auto &e : workList[i]->getSubLoops())
+    if (al.hasAnnotatedId(*e)) {
+      auto id = al.getAnnotatedId(*e);
+      if (loopIDs.count(id))
         workList.push_back(e);
-
-    workList.erase(
-        std::remove_if(workList.begin(), workList.end(), [](const auto *e) {
-          auto d = e->getLoopDepth();
-          return d < LoopDepthLB || d > LoopDepthUB;
-        }), workList.end());
-
-    std::reverse(workList.begin(), workList.end());
-
-    for (auto *e : workList) {
-#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-      auto *id = llvm::ConstantInt::get(
-          llvm::IntegerType::get(
-              CurMod.getContext(),
-              std::numeric_limits<AnnotateLoops::LoopID_t>::digits),
-          al.getAnnotatedId(*e));
-#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-      instrumenter.instrumentLoop(*e, id);
     }
+  };
+#else
+  auto loopsFilter = [&](llvm::Loop *e) { workList.push_back(e); };
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
-    llvm::errs() << "instrumented " << workList.size() << " loops in function: "
-                 << (CurFunc.hasName() ? CurFunc.getName() : "") << "\n";
+  if (LRPOpts::cgscc == OperationMode) {
+    auto &CG = getAnalysis<llvm::CallGraphWrapperPass>().getCallGraph();
+    auto SCCIter = llvm::scc_begin(&CG);
+    auto SCCIterEnd = llvm::scc_end(&CG);
+
+    for (; SCCIter != SCCIterEnd; ++SCCIter)
+      for (const auto &SCCNode : *SCCIter) {
+        auto *CurFunc = SCCNode->getFunction();
+
+        if (CurFunc && !CurFunc->isDeclaration()) {
+          LI = &getAnalysis<llvm::LoopInfoWrapperPass>(*CurFunc).getLoopInfo();
+
+          // clang-format off
+          DEBUG_CMD(
+          for (const auto *e : *LI)
+              e->print(llvm::errs()));
+          // clang-format on
+        }
+      }
+  } else if (LRPOpts::module == OperationMode) {
+    for (auto &CurFunc : CurMod) {
+      if (CurFunc.isDeclaration())
+        continue;
+
+      LI = &getAnalysis<llvm::LoopInfoWrapperPass>(CurFunc).getLoopInfo();
+
+      workList.clear();
+      std::for_each(LI->begin(), LI->end(), loopsFilter);
+
+      for (auto i = 0; i < workList.size(); ++i)
+        for (auto &e : workList[i]->getSubLoops())
+          workList.push_back(e);
+
+      workList.erase(
+          std::remove_if(workList.begin(), workList.end(), [](const auto *e) {
+            auto d = e->getLoopDepth();
+            return d < LoopDepthLB || d > LoopDepthUB;
+          }), workList.end());
+
+      std::reverse(workList.begin(), workList.end());
+
+      for (auto *e : workList) {
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+        AnnotateLoops al;
+        auto *id = llvm::ConstantInt::get(
+            llvm::IntegerType::get(
+                CurMod.getContext(),
+                std::numeric_limits<AnnotateLoops::LoopID_t>::digits),
+            al.getAnnotatedId(*e));
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+        instrumenter.instrumentLoop(*e, id);
+      }
+
+      llvm::errs() << "instrumented " << workList.size()
+                   << " loops in function: "
+                   << (CurFunc.hasName() ? CurFunc.getName() : "") << "\n";
+    }
   }
 
   return hasModuleChanged;
