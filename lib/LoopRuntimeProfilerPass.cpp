@@ -132,6 +132,8 @@ static llvm::RegisterStandardPasses RegisterLoopRuntimeProfilerPass(
 
 //
 
+static unsigned long int NumLoopsInstrumented = 0;
+
 enum LRPOpts {
   module,
   cgscc,
@@ -150,7 +152,7 @@ static llvm::cl::opt<unsigned int>
 static llvm::cl::opt<unsigned int>
     LoopDepthUB("lrp-loop-depth-ub",
                 llvm::cl::desc("loop depth upper bound (inclusive)"),
-                llvm::cl::init(std::numeric_limits<unsigned>::max()));
+                llvm::cl::init(std::numeric_limits<unsigned int>::max()));
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 static llvm::cl::list<unsigned int>
@@ -212,9 +214,10 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   bool hasModuleChanged = false;
   bool useLoopIDWhitelist = !LoopIDWhiteListFilename.empty();
   llvm::SmallVector<llvm::Loop *, 16> workList;
-  std::set<unsigned> loopIDs;
   llvm::LoopInfo *LI = nullptr;
+  std::set<unsigned int> loopIDs;
   std::uint32_t idNum = 0;
+  unsigned int NumLoopsInElementInstrumented = 0;
 
   if (useLoopIDWhitelist)
     readIDWhilelist(LoopIDWhiteListFilename, loopIDs);
@@ -265,6 +268,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     auto SCCIterEnd = llvm::scc_end(&CG);
 
     for (; SCCIter != SCCIterEnd; ++SCCIter) {
+      NumLoopsInElementInstrumented = 0;
       workList.clear();
 
       for (const auto &SCCNode : *SCCIter) {
@@ -282,20 +286,37 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
                 std::numeric_limits<decltype(tmpIdNum)>::digits),
             tmpIdNum);
 
+        if (workList.size())
+          DEBUG_CMD(llvm::errs() << "instrumenting " << workList.size()
+                                 << "loops in SCC containing function "
+                                 << CurFunc->getName() << "\n");
+
         for (auto *e : workList) {
           instrumenter.instrumentLoop(*e, id);
+
+          NumLoopsInElementInstrumented++;
+          NumLoopsInstrumented++;
           hasModuleChanged |= true;
         }
       }
+
+      DEBUG_CMD(llvm::errs() << "Number of loops in SCC instrumented: "
+                             << NumLoopsInElementInstrumented << "\n");
     }
   } else if (LRPOpts::module == OperationMode) {
     for (auto &CurFunc : CurMod) {
       if (CurFunc.isDeclaration())
         continue;
 
+      NumLoopsInElementInstrumented = 0;
       workList.clear();
       LI = &getAnalysis<llvm::LoopInfoWrapperPass>(CurFunc).getLoopInfo();
       prepareLoops();
+
+      if (workList.size())
+        DEBUG_CMD(llvm::errs() << "instrumenting " << workList.size()
+                               << "loops in function " << CurFunc.getName()
+                               << "\n");
 
       for (auto *e : workList) {
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
@@ -311,8 +332,14 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
             tmpIdNum);
 
         instrumenter.instrumentLoop(*e, id);
+
+        NumLoopsInstrumented++;
+        NumLoopsInElementInstrumented++;
         hasModuleChanged |= true;
       }
+
+      DEBUG_CMD(llvm::errs() << "Number of loops in function instrumented: "
+                             << NumLoopsInElementInstrumented << "\n");
     }
   }
 
