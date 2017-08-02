@@ -138,7 +138,7 @@ enum LRPOpts {
 };
 
 static llvm::cl::opt<LRPOpts> OperationMode(
-    "lrp-mode", llvm::cl::desc("operation mode"),
+    "lrp-mode", llvm::cl::desc("operation mode"), llvm::cl::Required,
     llvm::cl::values(clEnumVal(module, "module mode"),
                      clEnumVal(cgscc, "call graph scc mode"), nullptr));
 
