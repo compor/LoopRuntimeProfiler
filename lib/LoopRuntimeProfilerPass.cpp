@@ -158,6 +158,14 @@ static llvm::cl::opt<unsigned int>
                 llvm::cl::desc("loop depth upper bound (inclusive)"),
                 llvm::cl::init(std::numeric_limits<unsigned int>::max()));
 
+static llvm::cl::opt<unsigned int> SCCStartId("lrp-scc-start-id",
+                                              llvm::cl::desc("SCC start id"),
+                                              llvm::cl::init(1));
+
+static llvm::cl::opt<unsigned int>
+    SCCIdInterval("lrp-scc-id-interval", llvm::cl::desc("SCC id interval"),
+                  llvm::cl::init(1));
+
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 static llvm::cl::list<unsigned int>
     LoopIDWhiteList("lrp-loop-id",
@@ -244,7 +252,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   llvm::SmallVector<llvm::Loop *, 16> workList;
   llvm::LoopInfo *LI = nullptr;
   std::set<unsigned int> loopIDs;
-  std::uint32_t idNum = 0;
+  std::uint32_t idNum = 1;
   unsigned int NumLoopsInElementInstrumented = 0;
 
   if (useLoopIDWhitelist)
@@ -291,6 +299,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   hasModuleChanged |= true;
 
   if (LRPOpts::cgscc == OperationMode) {
+    idNum = SCCStartId;
     auto &CG = getAnalysis<llvm::CallGraphWrapperPass>().getCallGraph();
     auto SCCIter = llvm::scc_begin(&CG);
     auto SCCIterEnd = llvm::scc_end(&CG);
@@ -310,7 +319,8 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
         if (!workList.size())
           continue;
 
-        auto tmpIdNum = ++idNum;
+        auto tmpIdNum = idNum;
+        idNum += SCCIdInterval;
         auto *id = llvm::ConstantInt::get(
             llvm::IntegerType::get(
                 CurMod.getContext(),
@@ -360,7 +370,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
         auto tmpIdNum = al.getAnnotatedId(*e);
 #else
-        auto tmpIdNum = ++idNum;
+        auto tmpIdNum = idNum++;
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
         auto *id = llvm::ConstantInt::get(
