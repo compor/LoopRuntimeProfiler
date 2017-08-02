@@ -192,6 +192,25 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     auto &CG = getAnalysis<llvm::CallGraphWrapperPass>().getCallGraph();
     LoopRuntimeProfiler::LoopRuntimeCallGraphProfiler LRPCGProf(CG);
 
+    auto SCCIter = llvm::scc_begin(&CG);
+    auto SCCIterEnd = llvm::scc_end(&CG);
+
+    for (; SCCIter != SCCIterEnd; ++SCCIter)
+      for (const auto &SCCNode : *SCCIter) {
+        auto *CurFunc = SCCNode->getFunction();
+
+        if (CurFunc && !CurFunc->isDeclaration()) {
+          auto &LI =
+              getAnalysis<llvm::LoopInfoWrapperPass>(*CurFunc).getLoopInfo();
+
+          // clang-format off
+          DEBUG_CMD(
+          for (const auto *e : LI)
+              e->print(llvm::errs()));
+          // clang-format on
+        }
+      }
+
     return false;
   }
 
