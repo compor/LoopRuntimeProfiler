@@ -179,6 +179,27 @@ void checkCmdLineOptions(void) {
   return;
 }
 
+bool readIDWhilelist(const std::string &Filename,
+                     std::set<unsigned int> &LoopIDs) {
+  std::ifstream loopIDWhiteListFile{LoopIDWhiteListFilename};
+  auto result = false;
+
+  if (loopIDWhiteListFile.is_open()) {
+    std::string loopID;
+
+    while (loopIDWhiteListFile >> loopID)
+      if (loopID.size() > 0 && loopID[0] != '#')
+        LoopIDs.insert(std::stoul(loopID));
+
+    loopIDWhiteListFile.close();
+    result = true;
+  } else
+    llvm::errs() << "could not open file: \'" << LoopIDWhiteListFilename
+                 << "\'\n";
+
+  return result;
+}
+
 } // namespace anonymous end
 
 //
@@ -193,24 +214,8 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   llvm::LoopInfo *LI = nullptr;
   std::uint32_t idNum = 0;
 
-  if (useLoopIDWhitelist) {
-    std::ifstream loopIDWhiteListFile{LoopIDWhiteListFilename};
-
-    if (loopIDWhiteListFile.is_open()) {
-      std::string loopID;
-
-      while (loopIDWhiteListFile >> loopID)
-        if (loopID.size() > 0 && loopID[0] != '#')
-          loopIDs.insert(std::stoul(loopID));
-
-      loopIDWhiteListFile.close();
-    } else
-      llvm::errs() << "could not open file: \'" << LoopIDWhiteListFilename
-                   << "\'\n";
-  }
-
-  for (const auto &e : LoopIDWhiteList)
-    loopIDs.insert(e);
+  if (useLoopIDWhitelist)
+    readIDWhilelist(LoopIDWhiteListFilename, loopIDs);
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
   AnnotateLoops al;
