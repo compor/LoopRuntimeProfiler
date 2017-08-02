@@ -191,6 +191,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   llvm::SmallVector<llvm::Loop *, 16> workList;
   std::set<unsigned> loopIDs;
   llvm::LoopInfo *LI = nullptr;
+  std::uint32_t idNum = 0;
 
   if (useLoopIDWhitelist) {
     std::ifstream loopIDWhiteListFile{LoopIDWhiteListFilename};
@@ -210,11 +211,6 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
   for (const auto &e : LoopIDWhiteList)
     loopIDs.insert(e);
-
-  LoopRuntimeProfiler::Instrumenter<
-      LoopRuntimeProfiler::DefaultRuntimeCallbacksPolicy> instrumenter;
-
-  instrumenter.instrumentProgram(CurMod);
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
   AnnotateLoops al;
@@ -248,6 +244,13 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     return;
   };
 
+  //
+
+  LoopRuntimeProfiler::Instrumenter<
+      LoopRuntimeProfiler::DefaultRuntimeCallbacksPolicy> instrumenter;
+
+  instrumenter.instrumentProgram(CurMod);
+
   if (LRPOpts::cgscc == OperationMode) {
     auto &CG = getAnalysis<llvm::CallGraphWrapperPass>().getCallGraph();
     auto SCCIter = llvm::scc_begin(&CG);
@@ -264,12 +267,19 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
           prepareLoops();
         }
 
-        // TODO stuff happen here
+        auto tmpIdNum = ++idNum;
+        auto *id = llvm::ConstantInt::get(
+            llvm::IntegerType::get(
+                CurMod.getContext(),
+                std::numeric_limits<decltype(tmpIdNum)>::digits),
+            tmpIdNum);
+
+        for (auto *e : workList) {
+          instrumenter.instrumentLoop(*e, id);
+        }
       }
     }
   } else if (LRPOpts::module == OperationMode) {
-    std::uint32_t idNum = 0;
-
     for (auto &CurFunc : CurMod) {
       if (CurFunc.isDeclaration())
         continue;
