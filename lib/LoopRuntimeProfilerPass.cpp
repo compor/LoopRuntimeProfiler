@@ -158,12 +158,12 @@ static llvm::cl::opt<std::string>
     LoopIDWhiteListFilename("lrp-loop-id-whitelist",
                             llvm::cl::desc("loop id whitelist filename"));
 
-#if LOOPRUNTIMEPROFILERPASS_DEBUG
+#if LOOPRUNTIMEPROFILER_DEBUG
 bool passDebugFlag = false;
 static llvm::cl::opt<bool, true>
     Debug("lrp-debug", llvm::cl::desc("debug loop runtime profiler pass"),
           llvm::cl::location(passDebugFlag));
-#endif // LOOPRUNTIMEPROFILERPASS_DEBUG
+#endif // LOOPRUNTIMEPROFILER_DEBUG
 
 namespace {
 

@@ -7,7 +7,7 @@
 
 #include "Config.hpp"
 
-#if LOOPRUNTIMEPROFILERPASS_DEBUG
+#if LOOPRUNTIMEPROFILER_DEBUG
 
 #include "llvm/IR/Function.h"
 // using llvm::Function
@@ -83,6 +83,6 @@ static constexpr bool dumpFunction(const llvm::Function *CurFunc = nullptr) {
 
 } // namespace icsa end
 
-#endif // LOOPRUNTIMEPROFILERPASS_DEBUG
+#endif // LOOPRUNTIMEPROFILER_DEBUG
 
 #endif // UTILS_HPP
