@@ -136,6 +136,7 @@ static unsigned long int NumLoopsInstrumented = 0;
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 std::map<AnnotateLoops::LoopID_t, unsigned int> LoopsToSCCs;
+std::map<AnnotateLoops::LoopID_t, std::string> LoopsToFuncNames;
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
 enum LRPOpts {
@@ -178,7 +179,7 @@ static llvm::cl::opt<std::string>
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
 static llvm::cl::opt<std::string>
-    ReportStatsFilename("lrp-stats", llvm::cl::desc("stats report filename"));
+    ReportFilename("lrp-report", llvm::cl::desc("report filename"));
 
 #if LOOPRUNTIMEPROFILER_DEBUG
 bool passDebugFlag = false;
@@ -232,7 +233,8 @@ void report(llvm::StringRef Filename) {
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
     for (const auto &e : LoopsToSCCs)
-      report << e.first << " " << e.second << "\n";
+      report << e.first << " " << e.second << " "
+             << LoopsToFuncNames.at(e.first) << "\n";
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
   }
 
@@ -248,7 +250,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
   bool hasModuleChanged = false;
   bool useLoopIDWhitelist = !LoopIDWhiteListFilename.empty();
-  bool shouldReportStats = !ReportStatsFilename.empty();
+  bool shouldReport = !ReportFilename.empty();
   llvm::SmallVector<llvm::Loop *, 16> workList;
   llvm::LoopInfo *LI = nullptr;
   std::set<unsigned int> loopIDs;
@@ -339,6 +341,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
           if (al.hasAnnotatedId(*e)) {
             auto loopID = al.getAnnotatedId(*e);
             LoopsToSCCs.emplace(loopID, tmpIdNum);
+            LoopsToFuncNames.emplace(loopID, CurFunc.getName().str());
           }
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
@@ -348,7 +351,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
         }
       }
 
-      DEBUG_CMD(llvm::errs() << "Number of loops in SCC instrumented: "
+      DEBUG_CMD(llvm::errs() << "Number of loops instrumented in SCC: "
                              << NumLoopsInElementInstrumented << "\n");
     }
   } else if (LRPOpts::module == OperationMode) {
@@ -386,7 +389,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
         hasModuleChanged |= true;
       }
 
-      DEBUG_CMD(llvm::errs() << "Number of loops in function instrumented: "
+      DEBUG_CMD(llvm::errs() << "Number of loops instrumented in function: "
                              << NumLoopsInElementInstrumented << "\n");
     }
   }
