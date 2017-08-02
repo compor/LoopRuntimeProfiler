@@ -94,7 +94,7 @@
 #include <cassert>
 // using assert
 
-#define DEBUG_TYPE "loop_runtime_profiler"
+#define DEBUG_TYPE "loop-runtime-profiler"
 
 #define STRINGIFY_UTIL(x) #x
 #define STRINGIFY(x) STRINGIFY_UTIL(x)
@@ -152,6 +152,7 @@ static llvm::cl::opt<unsigned int>
                 llvm::cl::desc("loop depth upper bound (inclusive)"),
                 llvm::cl::init(std::numeric_limits<unsigned>::max()));
 
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 static llvm::cl::list<unsigned int>
     LoopIDWhiteList("lrp-loop-id",
                     llvm::cl::desc("Specify loop ids to whitelist"),
@@ -160,6 +161,7 @@ static llvm::cl::list<unsigned int>
 static llvm::cl::opt<std::string>
     LoopIDWhiteListFilename("lrp-loop-id-whitelist",
                             llvm::cl::desc("loop id whitelist filename"));
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
 #if LOOPRUNTIMEPROFILER_DEBUG
 bool passDebugFlag = false;
