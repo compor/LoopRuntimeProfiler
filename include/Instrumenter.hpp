@@ -127,6 +127,8 @@ public:
   llvm::CallInst *instrumentProgram(llvm::Module &CurMod, Ts... args) {
     auto *func = CurMod.getFunction(RuntimeCallbacksPolicy::programEntry());
 
+    assert(func && "Program entry function was not found!");
+
     return !func->isDeclaration()
                ? instrumentProgram(*func, std::forward<Ts>(args)...)
                : nullptr;
