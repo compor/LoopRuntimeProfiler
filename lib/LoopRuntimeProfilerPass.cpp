@@ -169,6 +169,9 @@ static llvm::cl::opt<std::string>
                             llvm::cl::desc("loop id whitelist filename"));
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
+static llvm::cl::opt<std::string>
+    ReportStatsFilename("lrp-stats", llvm::cl::desc("stats report filename"));
+
 #if LOOPRUNTIMEPROFILER_DEBUG
 bool passDebugFlag = false;
 static llvm::cl::opt<bool, true>
@@ -208,6 +211,26 @@ bool readIDWhilelist(const std::string &Filename,
   return result;
 }
 
+void report(llvm::StringRef Filename) {
+  std::error_code err;
+
+  llvm::raw_fd_ostream report(Filename, err, llvm::sys::fs::F_Text);
+
+  if (err)
+    llvm::errs() << "could not open file: \"" << Filename
+                 << "\" reason: " << err.message() << "\n";
+  else {
+    report << NumLoopsInstrumented << "\n";
+
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+    for (const auto &e : LoopsToSCCs)
+      report << e.first << " " << e.second << "\n";
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+  }
+
+  return;
+}
+
 } // namespace anonymous end
 
 //
@@ -217,6 +240,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
   bool hasModuleChanged = false;
   bool useLoopIDWhitelist = !LoopIDWhiteListFilename.empty();
+  bool shouldReportStats = !ReportStatsFilename.empty();
   llvm::SmallVector<llvm::Loop *, 16> workList;
   llvm::LoopInfo *LI = nullptr;
   std::set<unsigned int> loopIDs;
