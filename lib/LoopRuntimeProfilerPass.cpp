@@ -12,8 +12,6 @@
 
 #include "LoopRuntimeProfilerPass.hpp"
 
-#include "LoopRuntimeProfiler.hpp"
-
 #include "Instrumenter.hpp"
 
 #include "llvm/Pass.h"
@@ -54,6 +52,11 @@
 #include "llvm/ADT/SmallVector.h"
 // using llvm::SmallVector
 
+#include "llvm/ADT/SCCIterator.h"
+// using llvm::scc_iterator
+// using llvm::scc_begin
+// using llvm::scc_end
+
 #include "llvm/Support/CommandLine.h"
 // using llvm::cl::opt
 // using llvm::cl::list
@@ -68,9 +71,6 @@
 #include "llvm/Support/Debug.h"
 // using DEBUG macro
 // using llvm::dbgs
-
-#include "llvm/IR/Verifier.h"
-// using llvm::verifyFunction
 
 #include <set>
 // using std::set
@@ -190,7 +190,6 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
   if (OperationMode == LRPOpts::callgraphscc) {
     auto &CG = getAnalysis<llvm::CallGraphWrapperPass>().getCallGraph();
-    LoopRuntimeProfiler::LoopRuntimeCallGraphProfiler LRPCGProf(CG);
 
     auto SCCIter = llvm::scc_begin(&CG);
     auto SCCIterEnd = llvm::scc_end(&CG);
