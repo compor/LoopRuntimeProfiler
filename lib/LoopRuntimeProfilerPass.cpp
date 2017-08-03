@@ -249,7 +249,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   checkCmdLineOptions();
 
   bool hasModuleChanged = false;
-  bool useLoopIDWhitelist = !LoopIDWhiteListFilename.empty();
+  bool useLoopIDWhitelist = false;
   bool shouldReport = !ReportFilename.empty();
   llvm::SmallVector<llvm::Loop *, 16> workList;
   llvm::LoopInfo *LI = nullptr;
@@ -257,17 +257,27 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   std::uint32_t idNum = 1;
   unsigned int NumLoopsInElementInstrumented = 0;
 
-  if (useLoopIDWhitelist)
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+  bool useLoopIDWhitelistFilename = !LoopIDWhiteListFilename.empty();
+  bool useLoopIDWhitelistOption = LoopIDWhiteList.size();
+  useLoopIDWhitelist = useLoopIDWhitelistOption || useLoopIDWhitelistFilename;
+
+  if (useLoopIDWhitelistFilename)
     readIDWhilelist(LoopIDWhiteListFilename, loopIDs);
 
-#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+  if (useLoopIDWhitelistOption)
+    loopIDs.insert(LoopIDWhiteList.begin(), LoopIDWhiteList.end());
+
   AnnotateLoops al;
 
   auto loopsFilter = [&](llvm::Loop *e) {
     if (al.hasAnnotatedId(*e)) {
       auto id = al.getAnnotatedId(*e);
-      if (loopIDs.count(id))
-        workList.push_back(e);
+
+      if (useLoopIDWhitelist && !loopIDs.count(id))
+        return;
+
+      workList.push_back(e);
     }
   };
 #else
