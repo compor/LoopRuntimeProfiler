@@ -319,46 +319,47 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     for (; SCCIter != SCCIterEnd; ++SCCIter) {
       NumLoopsInElementInstrumented = 0;
       workList.clear();
+      std::string curFuncName;
 
       for (const auto &SCCNode : *SCCIter) {
         if (!SCCNode->getFunction() || SCCNode->getFunction()->isDeclaration())
           continue;
 
         auto &CurFunc = *SCCNode->getFunction();
+        curFuncName = CurFunc.getName().str();
         LI = &getAnalysis<llvm::LoopInfoWrapperPass>(CurFunc).getLoopInfo();
         prepareLoops();
+      }
 
-        if (!workList.size())
-          continue;
+      if (!workList.size())
+        continue;
 
-        auto tmpIdNum = idNum;
-        idNum += SCCIdInterval;
-        auto *id = llvm::ConstantInt::get(
-            llvm::IntegerType::get(
-                CurMod.getContext(),
-                std::numeric_limits<decltype(tmpIdNum)>::digits),
-            tmpIdNum);
+      auto tmpIdNum = idNum;
+      idNum += SCCIdInterval;
+      auto *id = llvm::ConstantInt::get(
+          llvm::IntegerType::get(
+              CurMod.getContext(),
+              std::numeric_limits<decltype(tmpIdNum)>::digits),
+          tmpIdNum);
 
-        DEBUG_CMD(llvm::errs() << "instrumenting " << workList.size()
-                               << "loops in SCC with id " << tmpIdNum
-                               << " containing function " << CurFunc.getName()
-                               << "\n");
+      DEBUG_CMD(llvm::errs() << "instrumenting " << workList.size()
+                             << " loops in SCC with id " << tmpIdNum
+                             << " containing function " << curFuncName << "\n");
 
-        for (auto *e : workList) {
-          instrumenter.instrumentLoop(*e, id);
+      for (auto *e : workList) {
+        instrumenter.instrumentLoop(*e, id);
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-          if (al.hasAnnotatedId(*e)) {
-            auto loopID = al.getAnnotatedId(*e);
-            LoopsToSCCs.emplace(loopID, tmpIdNum);
-            LoopsToFuncNames.emplace(loopID, CurFunc.getName().str());
-          }
+        if (al.hasAnnotatedId(*e)) {
+          auto loopID = al.getAnnotatedId(*e);
+          LoopsToSCCs.emplace(loopID, tmpIdNum);
+          LoopsToFuncNames.emplace(loopID, curFuncName);
+        }
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
-          NumLoopsInElementInstrumented++;
-          NumLoopsInstrumented++;
-          hasModuleChanged |= true;
-        }
+        NumLoopsInElementInstrumented++;
+        NumLoopsInstrumented++;
+        hasModuleChanged |= true;
       }
 
       DEBUG_CMD(llvm::errs() << "Number of loops instrumented in SCC: "
@@ -376,7 +377,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
       if (workList.size())
         DEBUG_CMD(llvm::errs() << "instrumenting " << workList.size()
-                               << "loops in function " << CurFunc.getName()
+                               << " loops in function " << CurFunc.getName()
                                << "\n");
 
       for (auto *e : workList) {
