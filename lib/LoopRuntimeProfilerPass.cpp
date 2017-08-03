@@ -316,11 +316,6 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     auto SCCIter = llvm::scc_begin(&CG);
     auto SCCIterEnd = llvm::scc_end(&CG);
 
-    auto *id = llvm::ConstantInt::get(
-        llvm::IntegerType::get(CurMod.getContext(),
-                               std::numeric_limits<decltype(idNum)>::digits),
-        idNum);
-
     for (; SCCIter != SCCIterEnd; ++SCCIter) {
       NumLoopsInElementInstrumented = 0;
       std::string curFuncName;
@@ -343,6 +338,12 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
                                << " containing function " << curFuncName
                                << "\n");
 
+        auto *id = llvm::ConstantInt::get(
+            llvm::IntegerType::get(
+                CurMod.getContext(),
+                std::numeric_limits<decltype(idNum)>::digits),
+            idNum);
+
         for (auto *e : workList) {
           instrumenter.instrumentLoop(*e, id);
 
@@ -361,15 +362,8 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
       }
 
       // update SCC id only if there have been loops instrumented
-      if (NumLoopsInElementInstrumented) {
+      if (NumLoopsInElementInstrumented)
         idNum += SCCIdInterval;
-
-        auto *id = llvm::ConstantInt::get(
-            llvm::IntegerType::get(
-                CurMod.getContext(),
-                std::numeric_limits<decltype(idNum)>::digits),
-            idNum);
-      }
 
       DEBUG_CMD(llvm::errs() << "Number of loops instrumented in SCC: "
                              << NumLoopsInElementInstrumented << "\n");
