@@ -404,6 +404,9 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     }
   }
 
+  if (shouldReport)
+    report(ReportFilename);
+
   return hasModuleChanged;
 }
 
