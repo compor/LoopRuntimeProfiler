@@ -221,42 +221,33 @@ bool readIDWhilelist(const std::string &Filename,
   return result;
 }
 
-void report(llvm::StringRef FilenamePrefix) {
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+template <typename T>
+#endif
+void report(llvm::StringRef FilenamePrefix, llvm::StringRef FilenameSuffix
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+             ,
+             const std::map<AnnotateLoops::LoopID_t, T> &Data
+#endif
+             ) {
   std::error_code err;
 
-  auto filename1 = FilenamePrefix.str() + "-sccs.txt";
-  llvm::raw_fd_ostream report1(filename1, err, llvm::sys::fs::F_Text);
+  auto filename = FilenamePrefix.str() + FilenameSuffix.str() + ".txt";
+  llvm::raw_fd_ostream report(filename, err, llvm::sys::fs::F_Text);
 
   if (err)
-    llvm::errs() << "could not open file: \"" << filename1
+    llvm::errs() << "could not open file: \"" << filename
                  << "\" reason: " << err.message() << "\n";
   else {
-    report1 << NumLoopsInstrumented << "\n";
-
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-    for (const auto &e : LoopsToSCCs)
-      report1 << e.first << " " << e.second << "\n";
+    report << Data.size() << "\n";
+
+    for (const auto &e : Data)
+      report << e.first << " " << e.second << "\n";
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
   }
 
-  report1.close();
-
-  auto filename2 = FilenamePrefix.str() + "-funcs.txt";
-  llvm::raw_fd_ostream report2(filename2, err, llvm::sys::fs::F_Text);
-
-  if (err)
-    llvm::errs() << "could not open file: \"" << filename2
-                 << "\" reason: " << err.message() << "\n";
-  else {
-    report2 << NumLoopsInstrumented << "\n";
-
-#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-    for (const auto &e : LoopsToFuncNames)
-      report2 << e.first << " " << e.second << "\n";
-#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-  }
-
-  report2.close();
+  report.close();
 
   return;
 }
@@ -429,8 +420,10 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
     }
   }
 
-  if (shouldReport)
-    report(ReportFilenamePrefix);
+  if (shouldReport) {
+    report(ReportFilenamePrefix, "-sccs", LoopsToSCCs);
+    report(ReportFilenamePrefix, "-funcs", LoopsToFuncNames);
+  }
 
   return hasModuleChanged;
 }
