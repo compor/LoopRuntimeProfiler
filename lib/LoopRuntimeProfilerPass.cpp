@@ -197,6 +197,10 @@ void checkCmdLineOptions(void) {
   assert(LoopDepthLB <= LoopDepthUB &&
          "Loop depth lower bound cannot be greater that upper!");
 
+  if (LRPOpts::module == OperationMode)
+    assert(!SCCIdInterval.getPosition() && !SCCStartId.getPosition() &&
+           "SCC options are legal only in cgscc mode!");
+
   return;
 }
 
