@@ -422,8 +422,10 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   }
 
   if (shouldReport) {
-    report(ReportFilenamePrefix, "-sccs", LoopsToSCCs);
     report(ReportFilenamePrefix, "-funcs", LoopsToFuncNames);
+
+    if (LRPOpts::cgscc == OperationMode)
+      report(ReportFilenamePrefix, "-sccs", LoopsToSCCs);
   }
 
   return hasModuleChanged;
