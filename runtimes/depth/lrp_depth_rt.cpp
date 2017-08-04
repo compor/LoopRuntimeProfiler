@@ -36,8 +36,8 @@ using TP = std::chrono::time_point<std::chrono::system_clock>;
 TP lrp_ProgramStart;
 TP lrp_ProgramStop;
 
-long int lrp_MaxDepth = -1;
-long int lrp_CurrentDepth = -1;
+long unsigned int lrp_MaxDepth = 0;
+long unsigned int lrp_CurrentDepth = 0;
 
 std::set<uint32_t> lrp_LoopsExecuted;
 
