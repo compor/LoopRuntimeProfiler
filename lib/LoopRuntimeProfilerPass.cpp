@@ -226,10 +226,10 @@ template <typename T>
 #endif
 void report(llvm::StringRef FilenamePrefix, llvm::StringRef FilenameSuffix
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-             ,
-             const std::map<AnnotateLoops::LoopID_t, T> &Data
+            ,
+            const std::map<AnnotateLoops::LoopID_t, T> &Data
 #endif
-             ) {
+            ) {
   std::error_code err;
 
   auto filename = FilenamePrefix.str() + FilenameSuffix.str() + ".txt";
@@ -281,14 +281,14 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
   AnnotateLoops al;
 
-  auto loopsFilter = [&](llvm::Loop *e) {
+  auto loopsFilter = [&](const llvm::Loop *e) {
     if (al.hasAnnotatedId(*e)) {
       auto id = al.getAnnotatedId(*e);
 
       if (useLoopIDWhitelist && !loopIDs.count(id))
         return;
 
-      workList.push_back(e);
+      workList.push_back(const_cast<llvm::Loop *>(e));
     }
   };
 #else
@@ -396,23 +396,24 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
       for (auto *e : workList) {
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-        auto tmpIdNum = al.getAnnotatedId(*e);
-        LoopsToFuncNames.emplace(tmpIdNum, CurFunc.getName().str());
+        if (al.hasAnnotatedId(*e)) {
+          auto tmpIdNum = al.getAnnotatedId(*e);
+          LoopsToFuncNames.emplace(tmpIdNum, CurFunc.getName().str());
+          auto *id = llvm::ConstantInt::get(
+              llvm::IntegerType::get(
+                  CurMod.getContext(),
+                  std::numeric_limits<decltype(tmpIdNum)>::digits),
+              tmpIdNum);
+
+          instrumenter.instrumentLoop(*e, id);
+
+          NumLoopsInstrumented++;
+          NumLoopsInElementInstrumented++;
+          hasModuleChanged |= true;
+        }
 #else
         auto tmpIdNum = idNum++;
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-
-        auto *id = llvm::ConstantInt::get(
-            llvm::IntegerType::get(
-                CurMod.getContext(),
-                std::numeric_limits<decltype(tmpIdNum)>::digits),
-            tmpIdNum);
-
-        instrumenter.instrumentLoop(*e, id);
-
-        NumLoopsInstrumented++;
-        NumLoopsInElementInstrumented++;
-        hasModuleChanged |= true;
       }
 
       DEBUG_CMD(llvm::errs() << "Number of loops instrumented in function: "
