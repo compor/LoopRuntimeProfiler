@@ -2,9 +2,14 @@
 //
 //
 
-#include <time.h>
-// using clock
-// using CLOCKS_PER_SEC
+#include <set>
+// using std::set
+
+#include <chrono>
+// using std::chrono
+
+#include <ratio>
+// using std::milli
 
 #include <stdlib.h>
 // using atexit
@@ -25,11 +30,16 @@ bool lrp_ProfilingEnabled = true;
 const char *lrp_ReportFilename = nullptr;
 FILE *lrp_ReportFile = nullptr;
 
-clock_t lrp_ProgramStart;
-clock_t lrp_ProgramStop;
+using MSecs = std::chrono::duration<double, std::milli>;
+using TP = std::chrono::time_point<std::chrono::system_clock>;
+
+TP lrp_ProgramStart;
+TP lrp_ProgramStop;
 
 long int lrp_MaxDepth = -1;
 long int lrp_CurrentDepth = -1;
+
+std::set<uint32_t> lrp_LoopsExecuted;
 
 extern "C" {
 void lrp_init(void);
@@ -59,11 +69,13 @@ void lrp_report(void) {
   if (!lrp_ProfilingEnabled)
     return;
 
-  double duration =
-      1000.0 * (lrp_ProgramStop - lrp_ProgramStart) / CLOCKS_PER_SEC;
+  auto duration = lrp_ProgramStop - lrp_ProgramStart;
 
-  fprintf(lrp_ReportFile, "lrp runtime (ms): %f\n", duration);
+  fprintf(lrp_ReportFile, "lrp runtime (ms): %lf\n", MSecs(duration).count());
   fprintf(lrp_ReportFile, "max depth %lu\n", lrp_MaxDepth);
+
+  for (const auto &e : lrp_LoopsExecuted)
+    fprintf(lrp_ReportFile, "%u\n", e);
 
   if (lrp_ReportFile)
     fclose(lrp_ReportFile);
@@ -84,7 +96,7 @@ void lrp_program_start(void) {
   }
 
   fprintf(lrp_ReportFile, "lrp runtime start!\n");
-  lrp_ProgramStart = clock();
+  lrp_ProgramStart = std::chrono::system_clock::now();
 
   return;
 }
@@ -94,7 +106,7 @@ void lrp_program_stop(void) {
     return;
 
   fprintf(lrp_ReportFile, "lrp runtime stop!\n");
-  lrp_ProgramStop = clock();
+  lrp_ProgramStop = std::chrono::system_clock::now();
 
   lrp_report();
 
@@ -105,6 +117,7 @@ void lrp_loop_start(uint32_t id) {
   if (!lrp_ProfilingEnabled)
     return;
 
+  lrp_LoopsExecuted.insert(id);
   ++lrp_CurrentDepth;
 
   if (lrp_CurrentDepth > lrp_MaxDepth)
