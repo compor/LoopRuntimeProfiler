@@ -179,7 +179,8 @@ static llvm::cl::opt<std::string>
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
 static llvm::cl::opt<std::string>
-    ReportFilename("lrp-report", llvm::cl::desc("report filename"));
+    ReportFilenamePrefix("lrp-report",
+                         llvm::cl::desc("report filename porefix"));
 
 #if LOOPRUNTIMEPROFILER_DEBUG
 bool passDebugFlag = false;
@@ -220,23 +221,42 @@ bool readIDWhilelist(const std::string &Filename,
   return result;
 }
 
-void report(llvm::StringRef Filename) {
+void report(llvm::StringRef FilenamePrefix) {
   std::error_code err;
 
-  llvm::raw_fd_ostream report(Filename, err, llvm::sys::fs::F_Text);
+  auto filename1 = FilenamePrefix.str() + "-sccs.txt";
+  llvm::raw_fd_ostream report1(filename1, err, llvm::sys::fs::F_Text);
 
   if (err)
-    llvm::errs() << "could not open file: \"" << Filename
+    llvm::errs() << "could not open file: \"" << filename1
                  << "\" reason: " << err.message() << "\n";
   else {
-    report << NumLoopsInstrumented << "\n";
+    report1 << NumLoopsInstrumented << "\n";
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
     for (const auto &e : LoopsToSCCs)
-      report << e.first << " " << e.second << " "
-             << LoopsToFuncNames.at(e.first) << "\n";
+      report1 << e.first << " " << e.second << "\n";
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
   }
+
+  report1.close();
+
+  auto filename2 = FilenamePrefix.str() + "-funcs.txt";
+  llvm::raw_fd_ostream report2(filename2, err, llvm::sys::fs::F_Text);
+
+  if (err)
+    llvm::errs() << "could not open file: \"" << filename2
+                 << "\" reason: " << err.message() << "\n";
+  else {
+    report2 << NumLoopsInstrumented << "\n";
+
+#if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+    for (const auto &e : LoopsToFuncNames)
+      report2 << e.first << " " << e.second << "\n";
+#endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
+  }
+
+  report2.close();
 
   return;
 }
@@ -250,7 +270,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
   bool hasModuleChanged = false;
   bool useLoopIDWhitelist = false;
-  bool shouldReport = !ReportFilename.empty();
+  bool shouldReport = !ReportFilenamePrefix.empty();
   llvm::SmallVector<llvm::Loop *, 16> workList;
   llvm::LoopInfo *LI = nullptr;
   std::set<unsigned int> loopIDs;
@@ -386,6 +406,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
       for (auto *e : workList) {
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
         auto tmpIdNum = al.getAnnotatedId(*e);
+        LoopsToFuncNames.emplace(tmpIdNum, CurFunc.getName().str());
 #else
         auto tmpIdNum = idNum++;
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
@@ -409,7 +430,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   }
 
   if (shouldReport)
-    report(ReportFilename);
+    report(ReportFilenamePrefix);
 
   return hasModuleChanged;
 }
