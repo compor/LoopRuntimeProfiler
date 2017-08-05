@@ -2,6 +2,3 @@
 
 include(${CMAKE_CURRENT_LIST_DIR}/@PRJ_NAME@.cmake)
 
-set_target_properties(@LIB_NAME@ PROPERTIES DEPENDEE "@DEPENDEE@")
-
-message(STATUS "Found @PRJ_NAME@ version: @PRJ_VERSION@")
