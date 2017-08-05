@@ -139,15 +139,16 @@ std::map<AnnotateLoops::LoopID_t, unsigned int> LoopsToSCCs;
 std::map<AnnotateLoops::LoopID_t, std::string> LoopsToFuncNames;
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
-enum LRPOpts {
+enum struct LRPOpts {
   module,
   cgscc,
 };
 
 static llvm::cl::opt<LRPOpts> OperationMode(
     "lrp-mode", llvm::cl::desc("operation mode"), llvm::cl::Required,
-    llvm::cl::values(clEnumVal(module, "module mode"),
-                     clEnumVal(cgscc, "call graph scc mode"), nullptr));
+    llvm::cl::values(clEnumValN(LRPOpts::module, "module", "module mode"),
+                     clEnumValN(LRPOpts::cgscc, "cgscc", "call graph scc mode"),
+                     nullptr));
 
 static llvm::cl::opt<unsigned int>
     LoopDepthLB("lrp-loop-depth-lb",
