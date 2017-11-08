@@ -139,6 +139,10 @@ if(${target_type} STREQUAL "STATIC_LIBRARY")
   target_link_libraries(${LIB_NAME} PUBLIC ${llvm_libs})
 endif()
 
+if(AnnotateLoops_FOUND)
+  target_link_libraries(${LIB_NAME} PUBLIC LLVMAnnotateLoopsPass)
+endif()
+
 set_target_properties(${LIB_NAME} PROPERTIES 
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON
