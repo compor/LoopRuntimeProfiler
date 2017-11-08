@@ -9,6 +9,7 @@
 
 #include "llvm/Pass.h"
 // using llvm::ModulePass
+// using llvm::AnalysisUsage
 
 namespace llvm {
 class Module;

@@ -15,10 +15,10 @@ include(Util)
 include(HandleLLVMDependency)
 
 option(PRJ_USE_LLVM_INTERNAL_MODULE "Use LLVM macro for creating module" OFF)
-option(PRJ_SKIP_TESTS "Skip configuring the project tests" OFF)
-option(PRJ_DEBUG "Enable project custom debug output facilities" ON)
+option(LOOPRUNTIMEPROFILER_SKIP_TESTS "Skip configuring the project tests" OFF)
+option(LOOPRUNTIMEPROFILER_DEBUG "Enable project custom debug output facilities" ON)
 
-message(STATUS "project debug: ${PRJ_DEBUG}")
+message(STATUS "project debug: ${LOOPRUNTIMEPROFILER_DEBUG}")
 
 get_version(VERSION PRJ_VERSION)
 
@@ -153,7 +153,7 @@ target_compile_definitions(${LIB_NAME} PUBLIC ${LLVM_DEFINITIONS})
 target_compile_definitions(${LIB_NAME} PRIVATE VERSION_STRING=${PRJ_VERSION})
 
 set(PRJ_DEBUG_VALUE 0)
-if(PRJ_DEBUG)
+if(LOOPRUNTIMEPROFILER_DEBUG)
   set(PRJ_DEBUG_VALUE 1)
 endif()
 
