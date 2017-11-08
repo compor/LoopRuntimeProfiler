@@ -7,20 +7,18 @@ cmake_minimum_required(VERSION 3.2.0)
 enable_testing()
 
 # add project cmake module path
-set(PRJ_CMAKE_MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
-list(APPEND CMAKE_MODULE_PATH ${PRJ_CMAKE_MODULE_DIR})
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
 include(CMakePackageConfigHelpers)
 include(Util)
 include(HandleLLVMDependency)
 
-option(PRJ_USE_LLVM_INTERNAL_MODULE "Use LLVM macro for creating module" OFF)
 option(LOOPRUNTIMEPROFILER_SKIP_TESTS "Skip configuring the project tests" OFF)
 option(LOOPRUNTIMEPROFILER_DEBUG "Enable project custom debug output facilities" ON)
 
 message(STATUS "project debug: ${LOOPRUNTIMEPROFILER_DEBUG}")
 
-get_version(VERSION PRJ_VERSION)
+get_version(SHORT VERSION PRJ_VERSION)
 
 set(PRJ_NAME LoopRuntimeProfiler)
 string(TOUPPER ${PRJ_NAME} PRJ_NAME_UPPER)
@@ -33,10 +31,22 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   project(${PRJ_NAME} C CXX)
 
   set(PRJ_STANDALONE_BUILD TRUE)
+  set(LOOPRUNTIMEPROFILER_SKIP_TESTS OFF)
+  set(LOOPRUNTIMEPROFILER_DEBUG ON)
+  set(LOOPRUNTIMEPROFILER_EXPORT ${PRJ_NAME})
 
   message(STATUS "configuring as external LLVM project")
 endif()
 
+if(NOT LOOPRUNTIMEPROFILER_EXPORT)
+  message(FATAL_ERROR 
+    "LOOPRUNTIMEPROFILER_EXPORT must be defined when built as dependent project")
+endif()
+
+file(RELATIVE_PATH PATH_PREFIX ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+if(NOT PATH_PREFIX)
+  set(PATH_PREFIX ".")
+endif()
 
 # CMP0056 is required for any libc++abi dependency of the try_compile() command
 # this bumps required version to 3.2
@@ -50,8 +60,6 @@ handle_llvm_dependency(${PRJ_STANDALONE_BUILD})
 
 
 # project configuration
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 if(NOT LLVM_ENABLE_RTTI)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
@@ -110,30 +118,31 @@ set(LIB_NAME "LLVM${PRJ_NAME}Pass")
 set(LIB_SOURCES 
   "lib/LoopRuntimeProfilerPass.cpp")
 
-if(NOT PRJ_USE_LLVM_INTERNAL_MODULE)
+if(PRJ_STANDALONE_BUILD)
   add_library(${LIB_NAME} MODULE ${LIB_SOURCES})
 else()
-  # this follows the suggestion documented in
-  # http://llvm.org/docs/CMake.html#cmake-out-of-source-pass
-  # for allowing future inclusion of the plugin in the LLVM source tree
-  # by using LLVM's internal cmake functions and utilities
-  set(LLVM_RUNTIME_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/bin)
-  set(LLVM_LIBRARY_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/lib)
-
   add_llvm_loadable_module(${LIB_NAME} ${LIB_SOURCES})
 endif()
 
 # according to http://llvm.org/docs/CMake.html
 # we do not need the below library dependencies since the plugin will be loaded
 # via opt or clang which already have those libs in their dependencies
-# comment out the following two statements to test against static lib LLVM build
 
-#llvm_map_components_to_libnames(llvm_libs core support analysis ipo passes)
-#target_link_libraries(${LIB_NAME} PUBLIC ${llvm_libs})
+llvm_map_components_to_libnames(llvm_libs core support analysis ipo passes)
 
-if(AnnotateLoops_FOUND)
-  target_link_libraries(${LIB_NAME} PUBLIC LLVMAnnotateLoopsPass)
+if(llvm_libs)
+  list(GET llvm_libs 0 single_llvm_lib)
+  get_target_property(target_type ${single_llvm_lib} TYPE)
 endif()
+
+if(${target_type} STREQUAL "STATIC_LIBRARY")
+  target_link_libraries(${LIB_NAME} PUBLIC ${llvm_libs})
+endif()
+
+set_target_properties(${LIB_NAME} PROPERTIES 
+  CXX_STANDARD 14
+  CXX_STANDARD_REQUIRED ON
+  CMAKE_CXX_EXTENSIONS OFF)
 
 target_compile_definitions(${LIB_NAME} PUBLIC ${LLVM_DEFINITIONS})
 target_compile_definitions(${LIB_NAME} PRIVATE VERSION_STRING=${PRJ_VERSION})
@@ -145,11 +154,11 @@ endif()
 
 target_include_directories(${LIB_NAME} PUBLIC ${LLVM_INCLUDE_DIRS})
 target_include_directories(${LIB_NAME} PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>)
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_include_directories(${LIB_NAME} PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>)
 target_include_directories(${LIB_NAME} PUBLIC
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>)
+  $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${PATH_PREFIX}/include>)
 
 #
 
@@ -176,33 +185,34 @@ add_subdirectory(doc)
 
 add_subdirectory(runtimes)
 
-attach_compilation_db_command(${LIB_NAME})
+if(PRJ_STANDALONE_BUILD)
+  attach_compilation_db(TARGET ${LIB_NAME})
+endif()
 
 
 # installation
 
 set(CMAKE_INSTALL_MESSAGE "LAZY")
 
+if(PRJ_STANDALONE_BUILD)
 set(PRJ_INSTALL_INCLUDE_DIR "include")
+  set(PRJ_INSTALL_LIB_DIR "lib")
 set(PRJ_INSTALL_SHARE_DIR "share")
+else()
+  set(PRJ_INSTALL_INCLUDE_DIR "${PATH_PREFIX}/include")
+  set(PRJ_INSTALL_LIB_DIR "${PATH_PREFIX}/lib")
+  set(PRJ_INSTALL_SHARE_DIR "${PATH_PREFIX}/share")
+endif()
+
 set(PRJ_CONFIG_HEADER_FILE "Config.hpp")
 set(PRJ_CMAKE_CONFIG_FILE "config.cmake")
 set(PRJ_CMAKE_CONFIG_EXTRA_FILE "config-extra.cmake")
 
 set(DEPENDEE "")
 
-if(Foo_FOUND)
-  list(APPEND DEPENDEE ${FOO_LIB_DIR}${TRGT_PREFIX}${FOO_LIB}${TRGT_SUFFIX})
-endif()
-
-if(NOT PRJ_STANDALONE_BUILD)
-  set(PRJ_INSTALL_INCLUDE_DIR ${PRJ_NAME}${PRJ_INSTALL_INCLUDE_DIR})
-  set(PRJ_INSTALL_SHARE_DIR ${PRJ_NAME}${PRJ_INSTALL_SHARE_DIR})
-endif()
-
-if(PRJ_STANDALONE_BUILD)
-  install(TARGETS ${LIB_NAME} EXPORT ${PRJ_NAME} LIBRARY DESTINATION "lib")
-endif()
+install(TARGETS ${LIB_NAME} EXPORT ${LOOPRUNTIMEPROFILER_EXPORT}
+  ARCHIVE DESTINATION "${PRJ_INSTALL_LIB_DIR}"
+  LIBRARY DESTINATION "${PRJ_INSTALL_LIB_DIR}")
 
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include")
 set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES
@@ -232,8 +242,13 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
   PATTERN "*.in" EXCLUDE)
 install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/" 
   DESTINATION ${PRJ_INSTALL_INCLUDE_DIR})
+
+if(PRJ_STANDALONE_BUILD)
 install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/share/"
   DESTINATION ${PRJ_INSTALL_SHARE_DIR})
+endif()
 
-install(EXPORT ${PRJ_NAME} DESTINATION "${PRJ_INSTALL_SHARE_DIR}/cmake")
+if(PRJ_STANDALONE_BUILD)
+  install(EXPORT ${LOOPRUNTIMEPROFILER_EXPORT} DESTINATION "${PRJ_INSTALL_SHARE_DIR}/cmake")
+endif()
 
