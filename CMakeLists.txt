@@ -15,6 +15,7 @@ include(HandleLLVMDependency)
 
 option(LOOPRUNTIMEPROFILER_SKIP_TESTS "Skip configuring the project tests" OFF)
 option(LOOPRUNTIMEPROFILER_DEBUG "Enable project custom debug output facilities" ON)
+option(LOOPRUNTIMEPROFILER_SHARED_RUNTIMES "Control building type of runtime libraries" OFF)
 
 message(STATUS "project debug: ${LOOPRUNTIMEPROFILER_DEBUG}")
 
@@ -186,6 +187,11 @@ set(TESTEE_LIB ${LIB_NAME})
 add_subdirectory(unittests)
 add_subdirectory(tests)
 add_subdirectory(doc)
+
+set(RUNTIME_LIB_TYPE "STATIC")
+if(LOOPRUNTIMEPROFILER_SHARED_RUNTIMES)
+  set(RUNTIME_LIB_TYPE "SHARED")
+endif()
 
 add_subdirectory(runtimes)
 
