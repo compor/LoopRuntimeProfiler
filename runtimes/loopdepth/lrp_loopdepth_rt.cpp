@@ -126,12 +126,12 @@ void lrp_loop_start(uint32_t id) {
   if (!lrp_ProfilingEnabled)
     return;
 
-  ++lrp_CurrentDepth;
-
-  if(lrp_LoopDepths.find(id) == lrp_LoopDepths.end())
-    lrp_LoopDepths[id] = { lrp_CurrentDepth };
+  if (lrp_LoopDepths.find(id) == lrp_LoopDepths.end())
+    lrp_LoopDepths[id] = {lrp_CurrentDepth};
   else
     lrp_LoopDepths[id].insert(lrp_CurrentDepth);
+
+  ++lrp_CurrentDepth;
 
   if (lrp_CurrentDepth > lrp_MaxDepth)
     lrp_MaxDepth = lrp_CurrentDepth;
