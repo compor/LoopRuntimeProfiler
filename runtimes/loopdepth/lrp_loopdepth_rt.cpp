@@ -80,7 +80,7 @@ void lrp_report(void) {
   for (const auto &e : lrp_LoopDepths) {
     fprintf(lrp_ReportFile, "%u ", e.first);
 
-    for(const auto &k : e.second)
+    for (const auto &k : e.second)
       fprintf(lrp_ReportFile, "%lu ", k);
 
     fprintf(lrp_ReportFile, "\n");
@@ -143,7 +143,8 @@ void lrp_loop_stop(uint32_t id) {
   if (!lrp_ProfilingEnabled)
     return;
 
-  --lrp_CurrentDepth;
+  if (lrp_CurrentDepth)
+    --lrp_CurrentDepth;
 
   return;
 }
