@@ -155,6 +155,10 @@ static llvm::cl::opt<bool>
     LoopHeaderInstrument("lrp-header", llvm::cl::desc("instrument loop header"),
                          llvm::cl::init(false));
 
+static llvm::cl::opt<bool>
+    LoopLatchInstrument("lrp-latch", llvm::cl::desc("instrument loop latch"),
+                        llvm::cl::init(false));
+
 static llvm::cl::opt<unsigned int>
     LoopDepthLB("lrp-loop-depth-lb",
                 llvm::cl::desc("loop depth lower bound (inclusive)"),
@@ -372,6 +376,9 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
           if (LoopHeaderInstrument) {
             instrumenter.instrumentLoopHeader(*e, id);
           }
+          if (LoopLatchInstrument) {
+            instrumenter.instrumentLoopLatches(*e, id);
+          }
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
           if (al.has(*e)) {
@@ -423,6 +430,9 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
           instrumenter.instrumentLoop(*e, id);
           if (LoopHeaderInstrument) {
             instrumenter.instrumentLoopHeader(*e, id);
+          }
+          if (LoopLatchInstrument) {
+            instrumenter.instrumentLoopLatches(*e, id);
           }
 
           NumLoopsInstrumented++;

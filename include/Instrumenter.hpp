@@ -69,13 +69,15 @@ struct DefaultRuntimeCallbacksPolicy {
       : m_PrgStartFnName("lrp_program_start"),
         m_PrgStopFnName("lrp_program_stop"),
         m_LoopStartFnName("lrp_loop_start"), m_LoopStopFnName("lrp_loop_stop"),
-        m_LoopHeaderFnName("lrp_loop_header"), m_PrgEntryFnName("main") {}
+        m_LoopHeaderFnName("lrp_loop_header"),
+        m_LoopLatchFnName("lrp_loop_latch"), m_PrgEntryFnName("main") {}
 
   constexpr const std::string &programStart() const { return m_PrgStartFnName; }
   constexpr const std::string &programStop() const { return m_PrgStopFnName; }
   constexpr const std::string &loopStart() const { return m_LoopStartFnName; }
   constexpr const std::string &loopStop() const { return m_LoopStopFnName; }
   constexpr const std::string &loopHeader() const { return m_LoopHeaderFnName; }
+  constexpr const std::string &loopLatch() const { return m_LoopLatchFnName; }
   constexpr const std::string &programEntry() const { return m_PrgEntryFnName; }
 
 private:
@@ -84,6 +86,7 @@ private:
   const std::string m_LoopStartFnName;
   const std::string m_LoopStopFnName;
   const std::string m_LoopHeaderFnName;
+  const std::string m_LoopLatchFnName;
   const std::string m_PrgEntryFnName;
 };
 
@@ -205,6 +208,31 @@ public:
     auto *call1 = llvm::CallInst::Create(llvm::cast<llvm::Function>(headerFunc),
                                          fargs, "", startInsertionPoint);
     std::vector<llvm::CallInst *> calls(1, call1);
+    return std::make_tuple(calls);
+  }
+
+  template <typename... Ts>
+  decltype(auto) instrumentLoopLatches(llvm::Loop &CurLoop, Ts... args) {
+    auto *curHdr = CurLoop.getHeader();
+    auto &curCtx = curHdr->getContext();
+    auto *curModule = curHdr->getParent()->getParent();
+
+    auto *latchFunc =
+        insertVarargFunction(RuntimeCallbacksPolicy::loopLatch(), curModule);
+
+    constexpr const int size = sizeof...(args);
+    llvm::SmallVector<llvm::Value *, size> fargs{args...};
+
+    llvm::SmallVector<llvm::BasicBlock *, 5> latches;
+    CurLoop.getLoopLatches(latches);
+    std::vector<llvm::CallInst *> calls;
+
+    for (auto &e : latches) {
+      auto *call = llvm::CallInst::Create(llvm::cast<llvm::Function>(latchFunc),
+                                          fargs, "", e->getFirstNonPHIOrDbg());
+      calls.push_back(call);
+    }
+
     return std::make_tuple(calls);
   }
 };
