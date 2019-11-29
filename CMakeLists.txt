@@ -1,7 +1,5 @@
 # cmake file
 
-# build tool configuration
-
 cmake_minimum_required(VERSION 3.2.0)
 
 enable_testing()
@@ -12,6 +10,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(CMakePackageConfigHelpers)
 include(Util)
 include(HandleLLVMDependency)
+include(GNUInstallDirs)
 
 option(LOOPRUNTIMEPROFILER_SKIP_TESTS "Skip configuring the project tests" OFF)
 option(LOOPRUNTIMEPROFILER_DEBUG "Enable project custom debug output facilities" ON)
@@ -218,11 +217,25 @@ set(PRJ_CONFIG_HEADER_FILE "Config.hpp")
 set(PRJ_CMAKE_CONFIG_FILE "config.cmake")
 set(PRJ_CMAKE_CONFIG_EXTRA_FILE "config-extra.cmake")
 
+set(BIN_SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/utils/scripts/run/)
+
 set(DEPENDEE "")
 
 install(TARGETS ${LIB_NAME} EXPORT ${LOOPRUNTIMEPROFILER_EXPORT}
   ARCHIVE DESTINATION "${PRJ_INSTALL_LIB_DIR}"
   LIBRARY DESTINATION "${PRJ_INSTALL_LIB_DIR}")
+
+file(GLOB BIN_SCRIPTS LIST_DIRECTORIES FALSE RELATIVE
+  ${BIN_SCRIPTS_DIR}
+  ${BIN_SCRIPTS_DIR}/*.in)
+
+foreach(BIN_SCRIPT_TEMPLATE ${BIN_SCRIPTS})
+  get_filename_component(BIN_SCRIPT ${BIN_SCRIPT_TEMPLATE} NAME_WE)
+  configure_file(
+    "${BIN_SCRIPTS_DIR}/${BIN_SCRIPT_TEMPLATE}"
+    "${CMAKE_INSTALL_BINDIR}/${BIN_SCRIPT}"
+    @ONLY)
+endforeach()
 
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include")
 set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES
@@ -252,6 +265,10 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
   PATTERN "*.in" EXCLUDE)
 install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/" 
   DESTINATION ${PRJ_INSTALL_INCLUDE_DIR})
+
+install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin/"
+  DESTINATION "${CMAKE_INSTALL_BINDIR}"
+  USE_SOURCE_PERMISSIONS)
 
 if(PRJ_STANDALONE_BUILD)
 install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/share/"
