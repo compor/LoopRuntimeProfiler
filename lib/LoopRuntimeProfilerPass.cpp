@@ -151,6 +151,10 @@ static llvm::cl::opt<LRPOpts> OperationMode(
                      clEnumValN(LRPOpts::cgscc, "cgscc",
                                 "call graph scc mode")));
 
+static llvm::cl::opt<bool>
+    LoopHeaderInstrument("lrp-header", llvm::cl::desc("instrument loop header"),
+                         llvm::cl::init(false));
+
 static llvm::cl::opt<unsigned int>
     LoopDepthLB("lrp-loop-depth-lb",
                 llvm::cl::desc("loop depth lower bound (inclusive)"),
@@ -327,7 +331,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
       instrumenter;
 
   instrumenter.instrumentProgram(CurMod);
-  hasModuleChanged |= true;
+  hasModuleChanged = true;
 
   if (LRPOpts::cgscc == OperationMode) {
     idNum = SCCStartId;
@@ -365,6 +369,9 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
         for (auto *e : workList) {
           instrumenter.instrumentLoop(*e, id);
+          if (LoopHeaderInstrument) {
+            instrumenter.instrumentLoopHeader(*e, id);
+          }
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
           if (al.has(*e)) {
@@ -376,7 +383,7 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
 
           NumLoopsInElementInstrumented++;
           NumLoopsInstrumented++;
-          hasModuleChanged |= true;
+          hasModuleChanged = true;
         }
       }
 
@@ -414,10 +421,13 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
               tmpIdNum);
 
           instrumenter.instrumentLoop(*e, id);
+          if (LoopHeaderInstrument) {
+            instrumenter.instrumentLoopHeader(*e, id);
+          }
 
           NumLoopsInstrumented++;
           NumLoopsInElementInstrumented++;
-          hasModuleChanged |= true;
+          hasModuleChanged = true;
         }
 #else
         auto tmpIdNum = idNum++;
