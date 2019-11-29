@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib"
+
+INPUT_FILENAME=${1}
+FILENAME=$(basename ${1})
+DIR=$(dirname ${1})
+
+OUTPUT_FILENAME=${DIR}/${FILENAME%.*}-lrp.ll
+#REPORT_FILENAME=${DIR}/lrp-report-${FILENAME%.*}.txt
+
+opt \
+  -load ${LIB_DIR}/@PASS_SO_NAME@ \
+  -loop-runtime-profiler \
+  -lrp-mode=module \
+  -lrp-latch=true \
+  -lrp-debug \
+  -S \
+  -o ${OUTPUT_FILENAME} \
+  ${INPUT_FILENAME}
