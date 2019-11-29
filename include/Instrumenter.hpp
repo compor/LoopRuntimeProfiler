@@ -64,12 +64,6 @@
 namespace icsa {
 namespace LoopRuntimeProfiler {
 
-extern std::string ProfilerProgramEntryFuncName;
-extern std::string ProfilerProgramStartFuncName;
-extern std::string ProfilerProgramStopFuncName;
-extern std::string ProfilerLoopStartFuncName;
-extern std::string ProfilerLoopStopFuncName;
-
 struct DefaultRuntimeCallbacksPolicy {
   DefaultRuntimeCallbacksPolicy()
       : m_PrgStartFnName("lrp_program_start"),
@@ -163,10 +157,12 @@ public:
 
   template <typename... Ts>
   decltype(auto) instrumentLoop(llvm::Loop &CurLoop, Ts... args) {
-    assert(CurLoop.getLoopPreheader() && "Loop does not have a preheader!");
+    auto *curPhdr = CurLoop.getLoopPreheader();
+    assert(curPhdr && "Loop does not have a preheader!");
+    auto *curHdr = CurLoop.getHeader();
 
-    auto &curCtx = CurLoop.getHeader()->getContext();
-    auto *curModule = CurLoop.getHeader()->getParent()->getParent();
+    auto &curCtx = curHdr->getContext();
+    auto *curModule = curHdr->getParent()->getParent();
 
     auto *startFunc =
         insertVarargFunction(RuntimeCallbacksPolicy::loopStart(), curModule);
