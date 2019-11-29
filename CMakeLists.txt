@@ -103,13 +103,13 @@ endif()
 
 # dependencies
 
-find_package(AnnotateLoops CONFIG)
+find_package(AnnotateValues CONFIG)
 
-if(AnnotateLoops_FOUND)
+if(AnnotateValues_FOUND)
   set(${PRJ_NAME_UPPER}_USES_ANNOTATELOOPS 1)
 else()
   set(${PRJ_NAME_UPPER}_USES_ANNOTATELOOPS 0)
-  message(WARNING "package AnnotateLoops was not found")
+  message(WARNING "package AnnotateValues was not found")
 endif()
 
 
@@ -140,8 +140,8 @@ if(${target_type} STREQUAL "STATIC_LIBRARY")
   target_link_libraries(${LIB_NAME} PUBLIC ${llvm_libs})
 endif()
 
-if(AnnotateLoops_FOUND)
-  target_link_libraries(${LIB_NAME} PUBLIC LLVMAnnotateLoopsPass)
+if(AnnotateValues_FOUND)
+  target_link_libraries(${LIB_NAME} PUBLIC LLVMAnnotateValuesPass)
 endif()
 
 set_target_properties(${LIB_NAME} PROPERTIES 

@@ -7,7 +7,7 @@
 #include "Utils.hpp"
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-#include "AnnotateLoops.hpp"
+#include "AnnotateValues/AnnotateLoops.hpp"
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
 #include "LoopRuntimeProfilerPass.hpp"
@@ -46,8 +46,9 @@
 // using llvm::PassManagerBuilder
 // using llvm::RegisterStandardPasses
 
-#include "llvm/Transforms/Scalar.h"
-// using char llvm::LoopInfoSimplifyID
+//#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Utils.h"
+// using char llvm::LoopSimplifyID
 
 #include "llvm/ADT/SmallVector.h"
 // using llvm::SmallVector
@@ -135,8 +136,8 @@ static llvm::RegisterStandardPasses RegisterLoopRuntimeProfilerPass(
 static unsigned long int NumLoopsInstrumented = 0;
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-std::map<AnnotateLoops::LoopID_t, unsigned int> LoopsToSCCs;
-std::map<AnnotateLoops::LoopID_t, std::string> LoopsToFuncNames;
+std::map<AnnotateLoops::LoopIDTy, unsigned int> LoopsToSCCs;
+std::map<AnnotateLoops::LoopIDTy, std::string> LoopsToFuncNames;
 #endif // LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
 
 enum struct LRPOpts {
@@ -147,8 +148,8 @@ enum struct LRPOpts {
 static llvm::cl::opt<LRPOpts> OperationMode(
     "lrp-mode", llvm::cl::desc("operation mode"), llvm::cl::Required,
     llvm::cl::values(clEnumValN(LRPOpts::module, "module", "module mode"),
-                     clEnumValN(LRPOpts::cgscc, "cgscc", "call graph scc mode"),
-                     nullptr));
+                     clEnumValN(LRPOpts::cgscc, "cgscc",
+                                "call graph scc mode")));
 
 static llvm::cl::opt<unsigned int>
     LoopDepthLB("lrp-loop-depth-lb",
@@ -232,9 +233,9 @@ template <typename T>
 void report(llvm::StringRef FilenamePrefix, llvm::StringRef FilenameSuffix
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
             ,
-            const std::map<AnnotateLoops::LoopID_t, T> &Data
+            const std::map<AnnotateLoops::LoopIDTy, T> &Data
 #endif
-            ) {
+) {
   std::error_code err;
 
   auto filename = FilenamePrefix.str() + FilenameSuffix.str() + ".txt";
@@ -257,7 +258,7 @@ void report(llvm::StringRef FilenamePrefix, llvm::StringRef FilenameSuffix
   return;
 }
 
-} // namespace anonymous end
+} // namespace
 
 //
 
@@ -287,8 +288,8 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   AnnotateLoops al;
 
   auto loopsFilter = [&](const llvm::Loop *e) {
-    if (al.hasAnnotatedId(*e)) {
-      auto id = al.getAnnotatedId(*e);
+    if (al.has(*e)) {
+      auto id = al.get(*e);
 
       if (useLoopIDWhitelist && !loopIDs.count(id))
         return;
@@ -307,11 +308,12 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
       for (auto &e : workList[i]->getSubLoops())
         workList.push_back(e);
 
-    workList.erase(
-        std::remove_if(workList.begin(), workList.end(), [](const auto *e) {
-          auto d = e->getLoopDepth();
-          return d < LoopDepthLB || d > LoopDepthUB;
-        }), workList.end());
+    workList.erase(std::remove_if(workList.begin(), workList.end(),
+                                  [](const auto *e) {
+                                    auto d = e->getLoopDepth();
+                                    return d < LoopDepthLB || d > LoopDepthUB;
+                                  }),
+                   workList.end());
 
     std::reverse(workList.begin(), workList.end());
 
@@ -321,7 +323,8 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
   //
 
   LoopRuntimeProfiler::Instrumenter<
-      LoopRuntimeProfiler::DefaultRuntimeCallbacksPolicy> instrumenter;
+      LoopRuntimeProfiler::DefaultRuntimeCallbacksPolicy>
+      instrumenter;
 
   instrumenter.instrumentProgram(CurMod);
   hasModuleChanged |= true;
@@ -349,10 +352,10 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
         if (!workList.size())
           continue;
 
-        DEBUG_CMD(llvm::errs() << "instrumenting " << workList.size()
-                               << " loops in SCC with id " << idNum
-                               << " containing function " << curFuncName
-                               << "\n");
+        DEBUG_CMD(llvm::errs()
+                  << "instrumenting " << workList.size()
+                  << " loops in SCC with id " << idNum
+                  << " containing function " << curFuncName << "\n");
 
         auto *id = llvm::ConstantInt::get(
             llvm::IntegerType::get(
@@ -364,8 +367,8 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
           instrumenter.instrumentLoop(*e, id);
 
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-          if (al.hasAnnotatedId(*e)) {
-            auto loopID = al.getAnnotatedId(*e);
+          if (al.has(*e)) {
+            auto loopID = al.get(*e);
             LoopsToSCCs.emplace(loopID, idNum);
             LoopsToFuncNames.emplace(loopID, curFuncName);
           }
@@ -395,14 +398,14 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
       prepareLoops();
 
       if (workList.size())
-        DEBUG_CMD(llvm::errs() << "instrumenting " << workList.size()
-                               << " loops in function " << CurFunc.getName()
-                               << "\n");
+        DEBUG_CMD(llvm::errs()
+                  << "instrumenting " << workList.size()
+                  << " loops in function " << CurFunc.getName() << "\n");
 
       for (auto *e : workList) {
 #if LOOPRUNTIMEPROFILER_USES_ANNOTATELOOPS
-        if (al.hasAnnotatedId(*e)) {
-          auto tmpIdNum = al.getAnnotatedId(*e);
+        if (al.has(*e)) {
+          auto tmpIdNum = al.get(*e);
           LoopsToFuncNames.emplace(tmpIdNum, CurFunc.getName().str());
           auto *id = llvm::ConstantInt::get(
               llvm::IntegerType::get(
@@ -445,4 +448,4 @@ void LoopRuntimeProfilerPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 
   return;
 }
-} // namespace icsa end
+} // namespace icsa
