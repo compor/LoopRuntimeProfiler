@@ -32,6 +32,7 @@ void lrp_report(void);
 void lrp_program_start(void);
 void lrp_program_stop(void);
 void lrp_loop_start(uint32_t id);
+void lrp_loop_body(uint32_t id);
 void lrp_loop_stop(uint32_t id);
 } // extern "C"
 
