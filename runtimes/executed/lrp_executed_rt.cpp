@@ -91,7 +91,11 @@ void lrp_program_stop(void) {
   return;
 }
 
-void lrp_loop_start(uint32_t id) {
+void lrp_loop_start(uint32_t id) { return; }
+
+void lrp_loop_stop(uint32_t id) { return; }
+
+void lrp_loop_body(uint32_t id) {
   if (!lrp_ProfilingEnabled)
     return;
 
@@ -100,9 +104,3 @@ void lrp_loop_start(uint32_t id) {
   return;
 }
 
-void lrp_loop_stop(uint32_t id) {
-  if (!lrp_ProfilingEnabled)
-    return;
-
-  return;
-}
