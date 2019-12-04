@@ -31,6 +31,9 @@
 #include "llvm/IR/BasicBlock.h"
 // using llvm::BasicBlock
 
+#include "llvm/IR/CFG.h"
+// using llvm::successors
+
 #include "llvm/Analysis/LoopInfo.h"
 // using llvm::LoopInfo
 
@@ -70,13 +73,15 @@ struct DefaultRuntimeCallbacksPolicy {
         m_PrgStopFnName("lrp_program_stop"),
         m_LoopStartFnName("lrp_loop_start"), m_LoopStopFnName("lrp_loop_stop"),
         m_LoopHeaderFnName("lrp_loop_header"),
-        m_LoopLatchFnName("lrp_loop_latch"), m_PrgEntryFnName("main") {}
+        m_LoopBodyFnName("lrp_loop_body"), m_LoopLatchFnName("lrp_loop_latch"),
+        m_PrgEntryFnName("main") {}
 
   constexpr const std::string &programStart() const { return m_PrgStartFnName; }
   constexpr const std::string &programStop() const { return m_PrgStopFnName; }
   constexpr const std::string &loopStart() const { return m_LoopStartFnName; }
   constexpr const std::string &loopStop() const { return m_LoopStopFnName; }
   constexpr const std::string &loopHeader() const { return m_LoopHeaderFnName; }
+  constexpr const std::string &loopBody() const { return m_LoopBodyFnName; }
   constexpr const std::string &loopLatch() const { return m_LoopLatchFnName; }
   constexpr const std::string &programEntry() const { return m_PrgEntryFnName; }
 
@@ -86,6 +91,7 @@ private:
   const std::string m_LoopStartFnName;
   const std::string m_LoopStopFnName;
   const std::string m_LoopHeaderFnName;
+  const std::string m_LoopBodyFnName;
   const std::string m_LoopLatchFnName;
   const std::string m_PrgEntryFnName;
 };
@@ -208,6 +214,33 @@ public:
     auto *call1 = llvm::CallInst::Create(llvm::cast<llvm::Function>(headerFunc),
                                          fargs, "", startInsertionPoint);
     std::vector<llvm::CallInst *> calls(1, call1);
+    return std::make_tuple(calls);
+  }
+
+  template <typename... Ts>
+  decltype(auto) instrumentLoopBody(llvm::Loop &CurLoop, Ts... args) {
+    auto *curHdr = CurLoop.getHeader();
+    auto &curCtx = curHdr->getContext();
+    auto *curModule = curHdr->getParent()->getParent();
+
+    auto *bodyFunc =
+        insertVarargFunction(RuntimeCallbacksPolicy::loopBody(), curModule);
+
+    constexpr const int size = sizeof...(args);
+    llvm::SmallVector<llvm::Value *, size> fargs{args...};
+
+    auto *startInsertionPoint = curHdr->getFirstNonPHIOrDbgOrLifetime();
+    auto *call1 = llvm::CallInst::Create(llvm::cast<llvm::Function>(bodyFunc),
+                                         fargs, "", startInsertionPoint);
+
+    std::vector<llvm::CallInst *> calls;
+
+    for (auto *e : llvm::successors(curHdr)) {
+      auto *call = llvm::CallInst::Create(llvm::cast<llvm::Function>(bodyFunc),
+                                          fargs, "", e->getFirstNonPHIOrDbg());
+      calls.push_back(call);
+    }
+
     return std::make_tuple(calls);
   }
 
