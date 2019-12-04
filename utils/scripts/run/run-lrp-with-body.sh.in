@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib"
@@ -13,9 +14,7 @@ opt \
   -load ${LIB_DIR}/@PASS_SO_NAME@ \
   -loop-runtime-profiler \
   -lrp-mode=module \
-  -lrp-header=true \
   -lrp-body=true \
-  -lrp-latch=true \
   -lrp-debug \
   -S \
   -o ${OUTPUT_FILENAME} \
