@@ -120,7 +120,7 @@ private:
     auto *func =
         insertVarargFunction(m_InitFnName, BB.getParent()->getParent());
 
-    auto *insertBefore = BB.getFirstNonPHIOrDbg();
+    auto *insertBefore = BB.getFirstNonPHIOrDbgOrLifetime();
     return llvm::CallInst::Create(llvm::cast<llvm::Function>(func), "",
                                   insertBefore);
   }
@@ -154,7 +154,8 @@ public:
     constexpr const int size = sizeof...(args);
     llvm::SmallVector<llvm::Value *, size> fargs{args...};
 
-    auto *insertBefore = CurFunc.getEntryBlock().getFirstNonPHIOrDbg();
+    auto *insertBefore =
+        CurFunc.getEntryBlock().getFirstNonPHIOrDbgOrLifetime();
     auto *call = llvm::CallInst::Create(llvm::cast<llvm::Function>(func), fargs,
                                         "", insertBefore);
 
@@ -181,7 +182,7 @@ public:
     constexpr const int size = sizeof...(args);
     llvm::SmallVector<llvm::Value *, size> fargs{args...};
 
-    auto *startInsertionPoint = curPhdr->getFirstNonPHIOrDbg();
+    auto *startInsertionPoint = curPhdr->getFirstNonPHIOrDbgOrLifetime();
     auto *call1 = llvm::CallInst::Create(llvm::cast<llvm::Function>(startFunc),
                                          fargs, "", startInsertionPoint);
     std::vector<llvm::CallInst *> calls(1, call1);
@@ -190,8 +191,9 @@ public:
     CurLoop.getExitBlocks(exits);
 
     for (auto &e : exits) {
-      auto *call2 = llvm::CallInst::Create(llvm::cast<llvm::Function>(endFunc),
-                                           fargs, "", e->getFirstNonPHIOrDbg());
+      auto *call2 =
+          llvm::CallInst::Create(llvm::cast<llvm::Function>(endFunc), fargs, "",
+                                 e->getFirstNonPHIOrDbgOrLifetime());
       calls.push_back(call2);
     }
 
@@ -236,8 +238,9 @@ public:
     std::vector<llvm::CallInst *> calls;
 
     for (auto *e : llvm::successors(curHdr)) {
-      auto *call = llvm::CallInst::Create(llvm::cast<llvm::Function>(bodyFunc),
-                                          fargs, "", e->getFirstNonPHIOrDbg());
+      auto *call =
+          llvm::CallInst::Create(llvm::cast<llvm::Function>(bodyFunc), fargs,
+                                 "", e->getFirstNonPHIOrDbgOrLifetime());
       calls.push_back(call);
     }
 
@@ -261,8 +264,9 @@ public:
     std::vector<llvm::CallInst *> calls;
 
     for (auto &e : latches) {
-      auto *call = llvm::CallInst::Create(llvm::cast<llvm::Function>(latchFunc),
-                                          fargs, "", e->getFirstNonPHIOrDbg());
+      auto *call =
+          llvm::CallInst::Create(llvm::cast<llvm::Function>(latchFunc), fargs,
+                                 "", e->getFirstNonPHIOrDbgOrLifetime());
       calls.push_back(call);
     }
 
