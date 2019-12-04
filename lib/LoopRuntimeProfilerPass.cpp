@@ -156,6 +156,10 @@ static llvm::cl::opt<bool>
                          llvm::cl::init(false));
 
 static llvm::cl::opt<bool>
+    LoopBodyInstrument("lrp-body", llvm::cl::desc("instrument loop body"),
+                         llvm::cl::init(false));
+
+static llvm::cl::opt<bool>
     LoopLatchInstrument("lrp-latch", llvm::cl::desc("instrument loop latch"),
                         llvm::cl::init(false));
 
@@ -376,6 +380,9 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
           if (LoopHeaderInstrument) {
             instrumenter.instrumentLoopHeader(*e, id);
           }
+          if (LoopBodyInstrument) {
+            instrumenter.instrumentLoopBody(*e, id);
+          }
           if (LoopLatchInstrument) {
             instrumenter.instrumentLoopLatches(*e, id);
           }
@@ -430,6 +437,9 @@ bool LoopRuntimeProfilerPass::runOnModule(llvm::Module &CurMod) {
           instrumenter.instrumentLoop(*e, id);
           if (LoopHeaderInstrument) {
             instrumenter.instrumentLoopHeader(*e, id);
+          }
+          if (LoopBodyInstrument) {
+            instrumenter.instrumentLoopBody(*e, id);
           }
           if (LoopLatchInstrument) {
             instrumenter.instrumentLoopLatches(*e, id);
